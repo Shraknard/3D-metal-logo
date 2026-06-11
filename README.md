@@ -1,0 +1,168 @@
+# 🤘 Metal Logo → STL
+
+Transforme une image 2D de logo de groupe de metal en **fichier STL imprimable**
+(PLA, pensé pour une Bambu Lab A1). Conçu pour les logos *spiky / illisibles* :
+les traits fins sont automatiquement épaissis pour rester imprimables, et un fond
+optionnel relie les éléments détachés en une seule pièce.
+
+Une interface web locale permet de régler les paramètres et de visualiser le
+modèle 3D en temps réel, avec les cotes en millimètres.
+
+```
+ image (PNG/JPG/GIF)  ─►  binarisation  ─►  vectorisation  ─►  extrusion + fond  ─►  STL
+```
+
+---
+
+## ✨ Fonctionnalités
+
+- **Binarisation robuste** : seuillage Otsu, détection automatique de la polarité
+  (logo clair sur fond foncé ou l'inverse), suppression du bruit.
+- **Épaississement intelligent** : garantit un trait minimum ≈ 1 largeur de buse,
+  pour que les pointes fines des logos black metal s'impriment réellement.
+- **Fond / support** au choix : aucun · offset de la silhouette (marge réglable) ·
+  plaque convexe (*hull*) · rectangle. Indispensable pour tenir les morceaux détachés.
+- **Visualiseur 3D** (Three.js) : rotation, zoom, boîte englobante et dimensions
+  X/Y/Z en mm.
+- **Poids maîtrisé** : la résolution de tracé est plafonnée → STL léger sans perte
+  de qualité visible à l'impression.
+
+---
+
+## 📦 Prérequis
+
+### Outils système (hors `pip`)
+
+| Outil      | Rôle                                   |
+|------------|----------------------------------------|
+| `potrace`  | vectorisation bitmap → SVG             |
+| `openscad` | extrusion 3D et export STL             |
+| `xvfb`     | rendu OpenSCAD headless (optionnel)    |
+| `python3`  | ≥ 3.10                                 |
+
+Sur Debian / Ubuntu :
+
+```bash
+sudo apt install -y potrace openscad xvfb python3-venv
+```
+
+---
+
+## 🚀 Installation
+
+```bash
+git clone https://github.com/Shraknard/3D-metal-logo.git
+cd 3D-metal-logo
+./setup.sh
+```
+
+`setup.sh` crée le venv Python, installe les dépendances (`requirements.txt`) et
+télécharge Three.js dans `pipeline/static/vendor/` (aucun de ces éléments n'est
+versionné).
+
+<details>
+<summary>Installation manuelle (équivalent de setup.sh)</summary>
+
+```bash
+python3 -m venv .venv
+./.venv/bin/pip install -r requirements.txt
+
+# Three.js (viewer 3D, fonctionne ensuite hors-ligne)
+V=0.160.0; B="https://unpkg.com/three@$V"
+mkdir -p pipeline/static/vendor/jsm/controls pipeline/static/vendor/jsm/loaders
+curl -fsSL -o pipeline/static/vendor/three.module.js               "$B/build/three.module.js"
+curl -fsSL -o pipeline/static/vendor/jsm/controls/OrbitControls.js "$B/examples/jsm/controls/OrbitControls.js"
+curl -fsSL -o pipeline/static/vendor/jsm/loaders/STLLoader.js      "$B/examples/jsm/loaders/STLLoader.js"
+```
+</details>
+
+---
+
+## 🖥️ Lancer l'interface web
+
+```bash
+./.venv/bin/python pipeline/server.py
+```
+
+Puis ouvrir **http://127.0.0.1:5000**.
+
+1. Charger une image de logo.
+2. Régler les paramètres (voir ci-dessous).
+3. Cliquer **« Valider & générer »** → le modèle apparaît dans le visualiseur.
+4. Télécharger le STL.
+
+> ℹ️ Si tu relances le serveur, assure-toi qu'aucune instance ne tourne déjà
+> (`pkill -f pipeline/server.py`) sinon le port 5000 reste occupé.
+
+### Paramètres
+
+| Paramètre              | Effet |
+|------------------------|-------|
+| **Buse**               | garantit un trait min ≈ 1 buse (anti traits-fins non imprimables) |
+| **Épaississement**     | gras supplémentaire des traits (mm) |
+| **Largeur du logo**    | largeur finale du relief (mm) |
+| **Hauteur du relief**  | hauteur des lettres en relief (mm) |
+| **Épaisseur du fond**  | épaisseur de la plaque de support (mm) |
+| **Fond**               | `aucun` · `offset` (marge réglable) · `hull` · `rectangle` |
+| **Marge de l'offset**  | augmente jusqu'à ce que les éléments détachés se rejoignent |
+| **Détail**             | résolution de tracé → contrôle le poids du STL |
+
+---
+
+## ⌨️ Utilisation en ligne de commande
+
+```bash
+# Générer un STL (sortie dans out/single/)
+./.venv/bin/python pipeline/generate.py mon_logo.png \
+    --target-w 120 --nozzle 0.4 --backing offset --backing-offset 4
+
+# Comparer toutes les variantes de fond (out/compare/<variante>/)
+./.venv/bin/python pipeline/build.py mon_logo.png
+
+# Régénérer un logo de test synthétique
+./.venv/bin/python pipeline/make_test_logo.py test_logo.png
+```
+
+---
+
+## 🧩 Comment ça marche
+
+| Fichier            | Rôle |
+|--------------------|------|
+| `logo2stl.py`      | image → SVG(s). Binarisation, dilatation par **transformée de distance** (rapide), tracé potrace. Émet le relief + un fond plus large sur le même canvas (pour rester alignés). |
+| `logo.scad`        | extrude **une** pièce par appel (relief / fond offset / hull / rectangle). Pas de booléen → export quasi instantané. |
+| `merge_stl.py`     | concatène relief + fond en un STL. Les volumes se chevauchent : le slicer les fusionne (pas de fusion CGAL coûteuse). |
+| `generate.py`      | orchestre : paramètres → pixels → potrace → OpenSCAD → fusion → cotes. |
+| `server.py`        | serveur Flask local + API `/upload` `/generate`. |
+| `static/index.html`| interface + visualiseur Three.js. |
+
+**Astuce performance** : le nombre de triangles dépend de la *résolution de tracé*,
+pas de la taille de l'image source. Au-delà de ~1400 px, on ajoute des triangles
+sans gain visible à l'impression — d'où le plafond réglable.
+
+---
+
+## 📂 Structure
+
+```
+pipeline/
+├── server.py          # serveur web
+├── generate.py        # pipeline principal
+├── logo2stl.py        # image → SVG
+├── logo.scad          # SVG → STL (OpenSCAD)
+├── merge_stl.py       # fusion des pièces
+├── stl_bbox.py        # mesure des dimensions
+├── make_test_logo.py  # logo de test synthétique
+└── static/
+    ├── index.html     # UI + viewer 3D
+    └── vendor/        # Three.js (téléchargé par setup.sh, non versionné)
+out/                   # sorties générées (non versionné)
+```
+
+---
+
+## 🖨️ Impression
+
+STL monochrome, dos plat (se pose directement sur le plateau). Pour les logos très
+fragmentés, privilégier un fond `hull`/`rectangle` ou un `offset` assez large pour
+que tout tienne en une seule pièce. PLA, buse 0.4 mm, pas de support nécessaire.

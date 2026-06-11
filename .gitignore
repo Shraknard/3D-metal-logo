@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Generated output (STL, SVG, debug rasters, meta)
+out/
+out_*/
+*.stl
+*.svg
+
+# Source logos & any images (not versioned)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+
+# Vendored Three.js — re-fetched by setup.sh
+pipeline/static/vendor/
+
+# Local editor / tooling
+.claude/
+.DS_Store
+*.swp

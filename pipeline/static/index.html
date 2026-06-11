@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Metal Logo → STL</title>
+<style>
+  :root { --bg:#16181d; --panel:#1f232b; --line:#2c313b; --txt:#e7e9ee;
+          --mut:#9aa3b2; --acc:#e6483d; --ok:#46c178; }
+  * { box-sizing:border-box; }
+  body { margin:0; height:100vh; display:flex; font:14px/1.4 system-ui,sans-serif;
+         background:var(--bg); color:var(--txt); }
+  #panel { width:320px; flex:none; background:var(--panel);
+           border-right:1px solid var(--line); padding:16px; overflow-y:auto; }
+  h1 { font-size:15px; margin:0 0 4px; letter-spacing:.5px; }
+  .sub { color:var(--mut); font-size:12px; margin-bottom:14px; }
+  .grp { border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+         margin-bottom:12px; }
+  .grp h2 { font-size:11px; text-transform:uppercase; letter-spacing:.8px;
+            color:var(--mut); margin:0 0 8px; }
+  label { display:block; margin:9px 0 3px; font-size:12px; color:var(--mut); }
+  .row { display:flex; align-items:center; gap:8px; }
+  .row input[type=range] { flex:1; }
+  .val { width:54px; text-align:right; font-variant-numeric:tabular-nums;
+         color:var(--txt); }
+  select, input[type=number], input[type=file] { width:100%; background:#12151a;
+    color:var(--txt); border:1px solid var(--line); border-radius:6px;
+    padding:6px 8px; }
+  button { width:100%; padding:11px; border:0; border-radius:8px; font-weight:600;
+           cursor:pointer; }
+  #gen { background:var(--acc); color:#fff; font-size:15px; margin-top:4px; }
+  #gen:disabled { opacity:.5; cursor:wait; }
+  #status { font-size:12px; color:var(--mut); margin-top:8px; min-height:16px; }
+  #dims { display:flex; gap:6px; margin-top:8px; }
+  #dims div { flex:1; text-align:center; background:#12151a; border-radius:6px;
+              padding:6px 2px; }
+  #dims b { display:block; font-size:15px; }
+  #dims small { color:var(--mut); }
+  #xLab b{color:#ff6b6b} #yLab b{color:#5bd75b} #zLab b{color:#6ab0ff}
+  #thumb { width:100%; margin-top:8px; border:1px solid var(--line);
+           border-radius:6px; background:#000; display:none; }
+  #view { flex:1; position:relative; }
+  #hint { position:absolute; left:12px; bottom:10px; color:var(--mut);
+          font-size:11px; pointer-events:none; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <h1>METAL LOGO → STL</h1>
+  <div class="sub">Bambu A1 · PLA · monochrome</div>
+
+  <div class="grp">
+    <h2>Image source</h2>
+    <input type="file" id="file" accept="image/*" />
+    <div id="imgInfo" class="sub" style="margin:8px 0 0"></div>
+  </div>
+
+  <div class="grp">
+    <h2>Impression</h2>
+    <label>Buse (nozzle)</label>
+    <select id="nozzle">
+      <option value="0.2">0.2 mm</option>
+      <option value="0.3">0.3 mm</option>
+      <option value="0.4" selected>0.4 mm</option>
+      <option value="0.5">0.5 mm</option>
+      <option value="0.6">0.6 mm</option>
+      <option value="0.8">0.8 mm</option>
+    </select>
+    <div class="sub" style="margin-top:4px">Garantit un trait min. ≈ 1 buse (anti-traits-fins).</div>
+
+    <label>Épaississement <span class="val" id="thickenV">0.0</span> mm</label>
+    <div class="row"><input type="range" id="thicken" min="0" max="3" step="0.1" value="0"></div>
+  </div>
+
+  <div class="grp">
+    <h2>Dimensions</h2>
+    <label>Largeur du logo <span class="val" id="twV">120</span> mm</label>
+    <div class="row"><input type="range" id="tw" min="40" max="250" step="1" value="120"></div>
+    <label>Hauteur du relief <span class="val" id="thV">3.0</span> mm</label>
+    <div class="row"><input type="range" id="th" min="0.6" max="8" step="0.1" value="3"></div>
+    <label>Épaisseur du fond <span class="val" id="bhV">1.6</span> mm</label>
+    <div class="row"><input type="range" id="bh" min="0.4" max="5" step="0.1" value="1.6"></div>
+  </div>
+
+  <div class="grp">
+    <h2>Fond / support</h2>
+    <label>Type</label>
+    <select id="backing">
+      <option value="none">Aucun (logo déjà connecté)</option>
+      <option value="offset" selected>Offset silhouette (réglable)</option>
+      <option value="hull">Plaque hull (relie tout)</option>
+      <option value="rect">Rectangle (écusson)</option>
+    </select>
+    <div id="offWrap">
+      <label>Marge de l'offset <span class="val" id="offV">1.5</span> mm</label>
+      <div class="row"><input type="range" id="off" min="0" max="20" step="0.5" value="1.5"></div>
+      <div class="sub">Monte jusqu'à ce que les éléments détachés se rejoignent.</div>
+    </div>
+  </div>
+
+  <div class="grp">
+    <h2>Qualité / poids</h2>
+    <label>Détail (résolution de tracé)</label>
+    <select id="detail">
+      <option value="900">Léger ~900 px (STL mini)</option>
+      <option value="1400" selected>Standard ~1400 px</option>
+      <option value="2000">Élevé ~2000 px</option>
+      <option value="3000">Max ~3000 px (lourd)</option>
+    </select>
+    <div class="sub" style="margin-top:4px">Plafonne les triangles. Au-delà de ~1400 px, aucun gain visible à l'impression.</div>
+  </div>
+
+  <button id="gen" disabled>Valider & générer</button>
+  <div id="status">Charge une image pour commencer.</div>
+  <div id="dims" class="hidden">
+    <div id="xLab"><b>–</b><small>X mm</small></div>
+    <div id="yLab"><b>–</b><small>Y mm</small></div>
+    <div id="zLab"><b>–</b><small>Z mm</small></div>
+  </div>
+  <a id="dl" class="hidden" download="logo.stl"><button style="background:#2c313b;color:#fff;margin-top:8px">⬇ Télécharger le STL</button></a>
+  <img id="thumb" alt="binarisé" />
+</div>
+
+<div id="view">
+  <div id="hint">clic-glisser : tourner · molette : zoom · clic droit : déplacer</div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "/vendor/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from '/vendor/jsm/controls/OrbitControls.js';
+import { STLLoader } from '/vendor/jsm/loaders/STLLoader.js';
+
+// ---------- 3D scene ----------
+const viewEl = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(devicePixelRatio);
+viewEl.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x12141a);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000);
+camera.up.set(0,0,1);                       // Z up (STL is Z-up)
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const key = new THREE.DirectionalLight(0xffffff, 1.0); key.position.set(80,-120,160); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.4); fill.position.set(-120,80,60); scene.add(fill);
+
+const material = new THREE.MeshStandardMaterial({ color:0xb9c0cc, metalness:0.25, roughness:0.55 });
+let mesh = null, helpers = new THREE.Group();
+scene.add(helpers);
+
+function resize() {
+  const w = viewEl.clientWidth, h = viewEl.clientHeight;
+  renderer.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+function makeLabel(text, color) {
+  const c = document.createElement('canvas'); c.width=256; c.height=64;
+  const g = c.getContext('2d');
+  g.fillStyle='rgba(18,20,26,0.85)'; g.fillRect(0,0,256,64);
+  g.font='bold 34px system-ui'; g.fillStyle=color; g.textAlign='center';
+  g.fillText(text, 128, 44);
+  const tex = new THREE.CanvasTexture(c);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, depthTest:false }));
+  spr.scale.set(text.length*4+16, 12, 1);
+  return spr;
+}
+
+function showMesh(geom) {
+  if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); }
+  helpers.clear();
+  geom.computeVertexNormals(); geom.computeBoundingBox();
+  const bb = geom.boundingBox, size = new THREE.Vector3(); bb.getSize(size);
+  const ctr = new THREE.Vector3(); bb.getCenter(ctr);
+  // center on XY, keep flat back on z=0
+  geom.translate(-ctr.x, -ctr.y, -bb.min.z);
+  mesh = new THREE.Mesh(geom, material); scene.add(mesh);
+
+  geom.computeBoundingBox();
+  const b = geom.boundingBox;
+  const box = new THREE.Box3Helper(b, 0x3a4150); helpers.add(box);
+  // axis dimension labels at the box edges
+  const sx=size.x, sy=size.y, sz=size.z;
+  const lx = makeLabel(sx.toFixed(1)+' mm', '#ff6b6b'); lx.position.set(0, b.min.y-6, 0); helpers.add(lx);
+  const ly = makeLabel(sy.toFixed(1)+' mm', '#5bd75b'); ly.position.set(b.min.x-6, 0, 0); helpers.add(ly);
+  const lz = makeLabel(sz.toFixed(1)+' mm', '#6ab0ff'); lz.position.set(b.min.x-6, b.min.y-6, sz/2); helpers.add(lz);
+
+  // grid on the bed (10mm cells)
+  const span = Math.ceil(Math.max(sx,sy)/10)*10 + 20;
+  const grid = new THREE.GridHelper(span, span/10, 0x2c313b, 0x222731);
+  grid.rotation.x = Math.PI/2; helpers.add(grid);
+
+  // frame camera
+  const r = Math.max(sx,sy,sz);
+  camera.position.set(r*0.1, -r*1.6, r*1.2);
+  controls.target.set(0,0,sz/2); controls.update();
+  document.getElementById('xLab').firstElementChild.textContent = sx.toFixed(1);
+  document.getElementById('yLab').firstElementChild.textContent = sy.toFixed(1);
+  document.getElementById('zLab').firstElementChild.textContent = sz.toFixed(1);
+}
+
+(function loop(){ requestAnimationFrame(loop); controls.update(); renderer.render(scene,camera); })();
+
+// ---------- UI wiring ----------
+const $ = id => document.getElementById(id);
+const sliders = { thicken:'thickenV', tw:'twV', th:'thV', bh:'bhV', off:'offV' };
+for (const [s,v] of Object.entries(sliders)) {
+  const upd = () => $(v).textContent = (+$(s).value).toFixed(s==='tw'?0:1);
+  $(s).addEventListener('input', upd); upd();
+}
+function syncOffVis() { $('offWrap').style.display = $('backing').value==='offset' ? '' : 'none'; }
+$('backing').addEventListener('change', syncOffVis); syncOffVis();
+
+let hasImage = false;
+$('file').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const fd = new FormData(); fd.append('image', f);
+  $('status').textContent = 'Envoi de l\'image…';
+  const r = await fetch('/upload', { method:'POST', body:fd });
+  const j = await r.json();
+  if (!j.ok) { $('status').textContent = 'Erreur: '+j.error; return; }
+  hasImage = true; $('gen').disabled = false;
+  $('imgInfo').textContent = `${j.width}×${j.height} px chargée.`;
+  $('status').textContent = 'Prêt. Règle les paramètres puis « Valider ».';
+});
+
+const loader = new STLLoader();
+$('gen').addEventListener('click', async () => {
+  if (!hasImage) return;
+  $('gen').disabled = true;
+  const t0 = performance.now();
+  $('status').textContent = 'Génération en cours…';
+  const params = {
+    nozzle:+$('nozzle').value, thicken_mm:+$('thicken').value,
+    target_w:+$('tw').value, text_h:+$('th').value, base_h:+$('bh').value,
+    backing:$('backing').value, backing_offset_mm:+$('off').value,
+    work_px:+$('detail').value,
+  };
+  try {
+    const r = await fetch('/generate', { method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify(params) });
+    const j = await r.json();
+    if (!j.ok) { $('status').textContent = 'Erreur: '+j.error; return; }
+    loader.load(j.stl_url, geom => {
+      showMesh(geom);
+      $('dims').classList.remove('hidden');
+      const dl = $('dl'); dl.href = j.stl_url; dl.classList.remove('hidden');
+      const th = $('thumb'); th.src = j.binarized_url; th.style.display='block';
+      const dt = ((performance.now()-t0)/1000).toFixed(1);
+      $('status').innerHTML =
+        `OK en ${dt}s · ${j.triangles.toLocaleString()} triangles · ` +
+        `trait min ≈ ${(j.grow_mm*2).toFixed(2)}mm`;
+    }, undefined, err => { $('status').textContent='Erreur chargement STL'; console.error(err); });
+  } catch (err) {
+    $('status').textContent = 'Erreur réseau: '+err;
+  } finally {
+    $('gen').disabled = false;
+  }
+});
+</script>
+</body>
+</html>
