@@ -15,12 +15,14 @@ import sys
 import time
 import traceback
 
+import numpy as np
 from flask import Flask, jsonify, request, send_from_directory
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import generate as gen  # noqa: E402
+import logo2stl as l2s  # noqa: E402
 
 ROOT = os.path.dirname(HERE)
 WORK = os.path.join(ROOT, "out")
@@ -63,6 +65,35 @@ def upload():
     return jsonify(ok=True, width=img.width, height=img.height)
 
 
+@app.post("/preview")
+def preview():
+    """Fast binarization-only pass (no potrace/openscad) so the threshold slider
+    stays interactive. Returns a downscaled black-on-white PNG + the auto cutoff
+    so the UI can seed the slider."""
+    if not os.path.exists(UPLOAD):
+        return jsonify(ok=False, error="Charge d'abord une image."), 400
+    p = request.get_json(force=True) or {}
+    thr = int(p.get("threshold", -1))
+    try:
+        fg, diag = l2s.load_fg(UPLOAD, "auto", thr)
+        fg = l2s.despeckle(fg, 0.01)
+    except Exception as e:  # noqa: BLE001
+        traceback.print_exc()
+        return jsonify(ok=False, error=str(e)), 500
+
+    raster = np.where(fg, 0, 255).astype(np.uint8)
+    img = Image.fromarray(raster, "L")
+    if img.width > 1000:  # keep the browser preview light
+        ratio = 1000.0 / img.width
+        img = img.resize((1000, max(1, round(img.height * ratio))), Image.NEAREST)
+    img.save(os.path.join(WORK, "preview.png"))
+
+    t = int(time.time() * 1000)
+    return jsonify(ok=True, preview_url=f"/out/preview.png?t={t}",
+                   otsu=diag["otsu"], threshold=diag["threshold"],
+                   ink_fraction=diag["ink_fraction"])
+
+
 @app.post("/generate")
 def do_generate():
     if not os.path.exists(UPLOAD):
@@ -79,6 +110,7 @@ def do_generate():
             backing=str(p.get("backing", "offset")),
             backing_offset_mm=float(p.get("backing_offset_mm", 1.5)),
             work_px=int(p.get("work_px", 1400)),
+            threshold=int(p.get("threshold", -1)),
         )
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()
@@ -89,7 +121,9 @@ def do_generate():
                    stl_url=f"/out/logo.stl?t={t}",
                    binarized_url=f"/out/binarized.png?t={t}",
                    dims=res["dims"], triangles=res["triangles"],
-                   grow_mm=res["grow_mm"], backing=res["backing"])
+                   grow_mm=res["grow_mm"], backing=res["backing"],
+                   otsu=res["meta"].get("otsu"),
+                   threshold=res["meta"].get("threshold"))
 
 
 if __name__ == "__main__":

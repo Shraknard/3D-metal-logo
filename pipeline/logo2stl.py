@@ -54,14 +54,20 @@ def otsu_threshold(gray: np.ndarray) -> int:
     return thr
 
 
-def load_fg(path, invert):
+def load_fg(path, invert, threshold=-1):
     """Return (fg boolean array where True == ink, diag dict). Robust polarity:
     corners are assumed background; ink = the other class. A minority-class guard
-    catches mislabeled cases (ink should normally cover < half the image)."""
+    catches mislabeled cases (ink should normally cover < half the image).
+
+    `threshold` < 0 -> auto (Otsu). Otherwise the given 0..255 cutoff is used on
+    the autocontrasted grey, letting the user trade thin-detail recovery (higher
+    cutoff = more faint/antialiased strokes kept as ink) against blobbing."""
     img = ImageOps.autocontrast(Image.open(path).convert("L"))
     g = np.asarray(img)
     h, w = g.shape
-    thr = otsu_threshold(g)
+    otsu = otsu_threshold(g)
+    manual = threshold is not None and threshold >= 0
+    thr = int(threshold) if manual else otsu
 
     cs = int(min(h, w) * 0.05) + 1
     corners = np.concatenate([
@@ -76,11 +82,13 @@ def load_fg(path, invert):
     else:
         # ink = the class the corners do NOT belong to
         fg = (g > thr) if bg_is_dark else (g <= thr)
-        # guard: if 'ink' is the majority, polarity is almost certainly flipped
-        if fg.mean() > 0.5:
+        # guard: if 'ink' is the majority, polarity is almost certainly flipped.
+        # Skip when the user picked the cutoff -- they control coverage on purpose.
+        if not manual and fg.mean() > 0.5:
             log(f"[warn] ink covered {fg.mean():.0%} -> flipping polarity")
             fg = ~fg
-    return fg, {"otsu": int(thr), "bg_is_dark": bool(bg_is_dark),
+    return fg, {"otsu": int(otsu), "threshold": int(thr),
+                "bg_is_dark": bool(bg_is_dark),
                 "corners_mean": round(float(corners.mean()), 1),
                 "ink_fraction": round(float(fg.mean()), 4)}
 
@@ -150,11 +158,13 @@ def main():
     ap.add_argument("--alphamax", type=float, default=1.0)
     ap.add_argument("--opttolerance", type=float, default=0.2)
     ap.add_argument("--invert", choices=["auto", "yes", "no"], default="auto")
+    ap.add_argument("--threshold", type=int, default=-1,
+                    help="0..255 binarization cutoff; <0 = auto (Otsu)")
     ap.add_argument("--debug-bmp", default=None)
     ap.add_argument("--meta", default=None)
     a = ap.parse_args()
 
-    fg, diag = load_fg(a.inp, a.invert)
+    fg, diag = load_fg(a.inp, a.invert, a.threshold)
     fg = despeckle(fg, a.despeckle)
 
     pad = int(np.ceil(max(a.grow_px, a.backing_grow_px))) + 6

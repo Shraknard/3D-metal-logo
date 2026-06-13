@@ -18,6 +18,10 @@ modèle 3D en temps réel, avec les cotes en millimètres.
 
 - **Binarisation robuste** : seuillage Otsu, détection automatique de la polarité
   (logo clair sur fond foncé ou l'inverse), suppression du bruit.
+- **Seuil de binarisation réglable** : un curseur (mode *Auto / Otsu* par défaut)
+  avec **aperçu instantané** permet de récupérer les traits fins/clairs des logos
+  spiky qu'un seuil automatique effacerait. Monter le seuil = plus de détails fins
+  conservés ; le descendre = trait plus net.
 - **Épaississement intelligent** : garantit un trait minimum ≈ 1 largeur de buse,
   pour que les pointes fines des logos black metal s'impriment réellement.
 - **Fond / support** au choix : aucun · offset de la silhouette (marge réglable) ·
@@ -86,8 +90,9 @@ curl -fsSL -o pipeline/static/vendor/jsm/loaders/STLLoader.js      "$B/examples/
 
 Puis ouvrir **http://127.0.0.1:5000**.
 
-1. Charger une image de logo.
-2. Régler les paramètres (voir ci-dessous).
+1. Charger une image de logo → un **aperçu binarisé** s'affiche aussitôt.
+2. Régler les paramètres (voir ci-dessous). Le curseur de **seuil** met l'aperçu
+   à jour en direct (sans relancer la génération 3D).
 3. Cliquer **« Valider & générer »** → le modèle apparaît dans le visualiseur.
 4. Télécharger le STL.
 
@@ -98,6 +103,7 @@ Puis ouvrir **http://127.0.0.1:5000**.
 
 | Paramètre              | Effet |
 |------------------------|-------|
+| **Seuil de binarisation** | coche *Auto (Otsu)* ou règle manuellement le seuil 1–254. Aperçu live. Seuil haut → récupère les traits clairs/antialiasés ; seuil bas → trait plus net |
 | **Buse**               | garantit un trait min ≈ 1 buse (anti traits-fins non imprimables) |
 | **Épaississement**     | gras supplémentaire des traits (mm) |
 | **Largeur du logo**    | largeur finale du relief (mm) |
@@ -116,6 +122,9 @@ Puis ouvrir **http://127.0.0.1:5000**.
 ./.venv/bin/python pipeline/generate.py mon_logo.png \
     --target-w 120 --nozzle 0.4 --backing offset --backing-offset 4
 
+# Forcer un seuil de binarisation manuel (0–255 ; défaut -1 = Otsu auto)
+./.venv/bin/python pipeline/generate.py mon_logo.png --threshold 200
+
 # Comparer toutes les variantes de fond (out/compare/<variante>/)
 ./.venv/bin/python pipeline/build.py mon_logo.png
 
@@ -129,11 +138,11 @@ Puis ouvrir **http://127.0.0.1:5000**.
 
 | Fichier            | Rôle |
 |--------------------|------|
-| `logo2stl.py`      | image → SVG(s). Binarisation, dilatation par **transformée de distance** (rapide), tracé potrace. Émet le relief + un fond plus large sur le même canvas (pour rester alignés). |
+| `logo2stl.py`      | image → SVG(s). Binarisation (Otsu auto ou seuil `--threshold` manuel), dilatation par **transformée de distance** (rapide), tracé potrace. Émet le relief + un fond plus large sur le même canvas (pour rester alignés). |
 | `logo.scad`        | extrude **une** pièce par appel (relief / fond offset / hull / rectangle). Pas de booléen → export quasi instantané. |
 | `merge_stl.py`     | concatène relief + fond en un STL. Les volumes se chevauchent : le slicer les fusionne (pas de fusion CGAL coûteuse). |
 | `generate.py`      | orchestre : paramètres → pixels → potrace → OpenSCAD → fusion → cotes. |
-| `server.py`        | serveur Flask local + API `/upload` `/generate`. |
+| `server.py`        | serveur Flask local + API `/upload` `/preview` (binarisation seule, rapide) `/generate`. |
 | `static/index.html`| interface + visualiseur Three.js. |
 
 **Astuce performance** : le nombre de triangles dépend de la *résolution de tracé*,

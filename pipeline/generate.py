@@ -39,7 +39,7 @@ def _openscad(stl, defs):
 
 def generate(image, outdir, *, target_w=120.0, text_h=3.0, base_h=1.6,
              nozzle=0.4, thicken_mm=0.0, backing="offset", backing_offset_mm=1.5,
-             work_px=1400, despeckle=0.01, rect_marg=5.0):
+             work_px=1400, despeckle=0.01, rect_marg=5.0, threshold=-1):
     os.makedirs(outdir, exist_ok=True)
     src_w, _ = Image.open(image).size
     mm_per_px = target_w / src_w
@@ -56,7 +56,7 @@ def generate(image, outdir, *, target_w=120.0, text_h=3.0, base_h=1.6,
     cmd = [sys.executable, L2S, image, svg,
            "--grow-px", f"{grow_px:.3f}", "--upscale", f"{upscale:.4f}",
            "--despeckle", str(despeckle), "--opttolerance", "0.6",
-           "--turdsize", "4",
+           "--turdsize", "4", "--threshold", str(int(threshold)),
            "--debug-bmp", os.path.join(outdir, "binarized.png"),
            "--meta", os.path.join(outdir, "meta.json")]
 
@@ -117,9 +117,12 @@ if __name__ == "__main__":
     ap.add_argument("--backing", default="offset", choices=list(BACKINGS))
     ap.add_argument("--backing-offset", type=float, default=1.5)
     ap.add_argument("--work-px", type=int, default=1400)
+    ap.add_argument("--threshold", type=int, default=-1,
+                    help="0..255 binarization cutoff; <0 = auto (Otsu)")
     a = ap.parse_args()
     res = generate(a.image, a.outdir, target_w=a.target_w, nozzle=a.nozzle,
                    thicken_mm=a.thicken, backing=a.backing,
-                   backing_offset_mm=a.backing_offset, work_px=a.work_px)
+                   backing_offset_mm=a.backing_offset, work_px=a.work_px,
+                   threshold=a.threshold)
     print(f"[ok] {res['stl']}  dims(mm) X={res['dims'][0]} Y={res['dims'][1]} "
           f"Z={res['dims'][2]}  {res['triangles']:,} tris  grow={res['grow_mm']}mm")

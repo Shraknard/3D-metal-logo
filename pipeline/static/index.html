@@ -54,6 +54,21 @@
     <h2>Image source</h2>
     <input type="file" id="file" accept="image/*" />
     <div id="imgInfo" class="sub" style="margin:8px 0 0"></div>
+
+    <div id="thrWrap" class="hidden">
+      <label>Seuil de binarisation
+        <span class="val" id="thrV">Auto</span></label>
+      <div class="row">
+        <input type="range" id="thr" min="1" max="254" step="1" value="128" disabled>
+      </div>
+      <label class="row" style="margin:2px 0 0; color:var(--mut)">
+        <input type="checkbox" id="thrAuto" checked style="width:auto;flex:none">
+        Auto (Otsu)
+      </label>
+      <div class="sub" style="margin-top:4px">Monte le seuil pour récupérer les traits fins/clairs ; descends-le pour affiner.</div>
+      <img id="preview" alt="aperçu binarisé"
+           style="width:100%;margin-top:8px;border:1px solid var(--line);border-radius:6px;background:#fff;display:none" />
+    </div>
   </div>
 
   <div class="grp">
@@ -217,6 +232,37 @@ for (const [s,v] of Object.entries(sliders)) {
 function syncOffVis() { $('offWrap').style.display = $('backing').value==='offset' ? '' : 'none'; }
 $('backing').addEventListener('change', syncOffVis); syncOffVis();
 
+// ---------- binarization threshold ----------
+// current cutoff sent to the backend: -1 == auto (Otsu)
+function curThreshold() { return $('thrAuto').checked ? -1 : +$('thr').value; }
+
+let seeded = false;          // slider value seeded from the auto Otsu cutoff?
+async function refreshPreview() {
+  if (!hasImage) return;
+  try {
+    const r = await fetch('/preview', { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ threshold: curThreshold() }) });
+    const j = await r.json();
+    if (!j.ok) { $('status').textContent = 'Erreur: '+j.error; return; }
+    if (!seeded && j.otsu != null) { $('thr').value = j.otsu; seeded = true; }
+    const pv = $('preview'); pv.src = j.preview_url; pv.style.display = 'block';
+  } catch (err) { $('status').textContent = 'Erreur aperçu: '+err; }
+}
+let previewTimer = null;
+function schedulePreview() { clearTimeout(previewTimer); previewTimer = setTimeout(refreshPreview, 160); }
+
+$('thrAuto').addEventListener('change', () => {
+  const auto = $('thrAuto').checked;
+  $('thr').disabled = auto;
+  $('thrV').textContent = auto ? 'Auto' : $('thr').value;
+  refreshPreview();
+});
+$('thr').addEventListener('input', () => {
+  $('thrV').textContent = $('thr').value;
+  schedulePreview();
+});
+
 let hasImage = false;
 $('file').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
@@ -226,8 +272,11 @@ $('file').addEventListener('change', async e => {
   const j = await r.json();
   if (!j.ok) { $('status').textContent = 'Erreur: '+j.error; return; }
   hasImage = true; $('gen').disabled = false;
+  seeded = false;
   $('imgInfo').textContent = `${j.width}×${j.height} px chargée.`;
+  $('thrWrap').classList.remove('hidden');
   $('status').textContent = 'Prêt. Règle les paramètres puis « Valider ».';
+  refreshPreview();
 });
 
 const loader = new STLLoader();
@@ -240,7 +289,7 @@ $('gen').addEventListener('click', async () => {
     nozzle:+$('nozzle').value, thicken_mm:+$('thicken').value,
     target_w:+$('tw').value, text_h:+$('th').value, base_h:+$('bh').value,
     backing:$('backing').value, backing_offset_mm:+$('off').value,
-    work_px:+$('detail').value,
+    work_px:+$('detail').value, threshold:curThreshold(),
   };
   try {
     const r = await fetch('/generate', { method:'POST',
