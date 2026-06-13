@@ -14,25 +14,6 @@ modèle 3D en temps réel, avec les cotes en millimètres.
 
 ---
 
-## ✨ Fonctionnalités
-
-- **Binarisation robuste** : seuillage Otsu, détection automatique de la polarité
-  (logo clair sur fond foncé ou l'inverse), suppression du bruit.
-- **Seuil de binarisation réglable** : un curseur (mode *Auto / Otsu* par défaut)
-  avec **aperçu instantané** permet de récupérer les traits fins/clairs des logos
-  spiky qu'un seuil automatique effacerait. Monter le seuil = plus de détails fins
-  conservés ; le descendre = trait plus net.
-- **Épaississement intelligent** : garantit un trait minimum ≈ 1 largeur de buse,
-  pour que les pointes fines des logos black metal s'impriment réellement.
-- **Fond / support** au choix : aucun · offset de la silhouette (marge réglable) ·
-  plaque convexe (*hull*) · rectangle. Indispensable pour tenir les morceaux détachés.
-- **Visualiseur 3D** (Three.js) : rotation, zoom, boîte englobante et dimensions
-  X/Y/Z en mm.
-- **Poids maîtrisé** : la résolution de tracé est plafonnée → STL léger sans perte
-  de qualité visible à l'impression.
-
----
-
 ## 📦 Prérequis
 
 ### Outils système (hors `pip`)
@@ -190,42 +171,17 @@ avec le chemin d'accès. Repères : 🪞 = qualité de surface · 💪 = résist
 | Chemin dans Bambu Studio | Valeur | But |
 |--------------------------|--------|-----|
 | Qualité → Hauteur de couche → **Hauteur de couche** | `0.12–0.16 mm` | 🪞 révèle les pointes/branches fines |
-| Qualité → Repassage → **Type de repassage** | `Toutes les surfaces sup.` | 🪞 lisse le dessus monochrome |
-| Qualité → Largeur de ligne → **Paroi extérieure** | `0.4 mm` | 🪞 restitue les traits fins au plus juste |
-| Qualité → Parois et surfaces → **Ordre d'impression des parois** | `Intérieur puis extérieur` | 🪞 bords extérieurs plus propres |
+| Qualité → Lissage → **Type de lissage** | `surfaces sup.` | 🪞 lisse le dessus monochrome |
+| Qualité → Lissage → **Débit de repassage** | `10%` | 🪞 Plus propre |
 
 #### Onglet « Résistance »
 
 | Chemin dans Bambu Studio | Valeur | But |
 |--------------------------|--------|-----|
-| Résistance → Parois → **Boucles de paroi** | `3–4` | 💪 les pointes fines deviennent du *plein paroi* = solide |
+| Résistance → Parois → **Nombre de paroi** | `3–4` | 💪 les pointes fines deviennent du *plein paroi* = solide |
 | Résistance → Coques sup./inf. → **Couches supérieures** | `4–5` | 💪🪞 dessus pleins et nets |
 | Résistance → Coques sup./inf. → **Couches inférieures** | `4–5` | 💪 bonne accroche relief ↔ fond |
 | Résistance → Coques sup./inf. → **Motif de surface supérieure** | `Monotone` | 🪞 rendu uniforme sans stries |
 | Résistance → Remplissage → **Densité de remplissage** | `20–25 %` | 💪 rigidité du fond |
 | Résistance → Remplissage → **Motif de remplissage clairsemé** | `Gyroïde` | 💪 rigidité isotrope |
 
-#### Onglet « Vitesse »
-
-| Chemin dans Bambu Studio | Valeur | But |
-|--------------------------|--------|-----|
-| Vitesse → Autres couches → **Paroi extérieure** | `≤ 150 mm/s` | 🪞 traits fins mieux formés, moins de vibrations |
-
-#### Onglet « Autres »
-
-| Chemin dans Bambu Studio | Valeur | But |
-|--------------------------|--------|-----|
-| Autres → Adhérence au plateau → **Type de bordure (*brim*)** | `Extérieur · 5 mm` si éléments détachés | 💪 tient les fines pointes pendant l'impression |
-
-#### Réglages du filament
-
-| Chemin dans Bambu Studio | Valeur | But |
-|--------------------------|--------|-----|
-| Filament → Température → **Température de la buse** | `220 °C` | 💪 adhérence inter-couches (anti-délamination) |
-| Filament → Température → **Température du plateau** | `60 °C` | 💪 accroche première couche |
-
-> 💡 Sur ces logos *spiky*, la solidité vient surtout des **parois** (Résistance →
-> Parois → Boucles de paroi à 3–4) bien plus que du remplissage : une pointe large
-> d'1 buse est alors 100 % paroi. Combine avec l'**épaississement** et le **seuil**
-> de l'outil pour qu'aucun trait ne descende sous ≈ 1 largeur de buse. L'épaisseur
-> du fond (≥ 1.6 mm) se règle **dans l'outil**, pas dans Bambu Studio.
