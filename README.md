@@ -185,3 +185,28 @@ avec le chemin d'accès. Repères : 🪞 = qualité de surface · 💪 = résist
 | Résistance → Remplissage → **Densité de remplissage** | `20–25 %` | 💪 rigidité du fond |
 | Résistance → Remplissage → **Motif de remplissage clairsemé** | `Gyroïde` | 💪 rigidité isotrope |
 
+### Enregistrer ces réglages comme preset « logo metal »
+
+Pour ne pas tout refaire à chaque impression, sauvegarde tes réglages dans un
+preset réutilisable. **Processus et filament sont deux presets séparés.**
+
+**Preset de processus** (Qualité / Résistance / Vitesse…)
+
+1. Fais tous tes réglages.
+2. Repère la ligne du preset actif (ex. `* 0.12mm High Quality @BBL A1`) — le
+   **`*`** signale des modifs non enregistrées.
+3. Clique l'icône **💾 disquette** à droite de cette ligne.
+4. **Remplace** le nom proposé par **`logo metal`** → *Enregistrer*.
+
+Le `*` disparaît, le déroulant affiche `logo metal`. Prochaine fois : ouvre le
+déroulant et sélectionne `logo metal` → tous les réglages reviennent d'un coup.
+
+**Preset de filament** (températures) — même principe sur le bloc *Filament* :
+règle la buse/le plateau puis 💾 → nomme par ex. **`PLA logo metal`**.
+
+> ⚠️ Si tu cliques la disquette **sans renommer**, tu écrases le preset système.
+> Tape toujours un **nouveau nom** pour créer un preset distinct.
+>
+> ℹ️ Un preset est lié à l'**imprimante + diamètre de buse** (A1 / 0.4 mm). Pour
+> le réutiliser ailleurs : `Fichier → Exporter → Exporter les préréglages`.
+
