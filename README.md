@@ -182,30 +182,50 @@ Profil de base : **Bambu PLA Basic · buse 0.4 · plateau lisse PEI**. Orienter 
 logo **à plat, relief vers le haut** (l'arrière plat reste sur le plateau → aucun
 support). Le plateau A1 fait **256 × 256 mm** : garder la largeur du logo en-deçà.
 
-**🪞 Lissage / qualité de surface**
+Réglages classés par **onglet de Bambu Studio** (panneau *Paramètres du processus*),
+avec le chemin d'accès. Repères : 🪞 = qualité de surface · 💪 = résistance.
 
-| Réglage (Bambu Studio)              | Valeur conseillée | Pourquoi |
-|-------------------------------------|-------------------|----------|
-| Hauteur de couche                   | **0.12 mm** (fin) à 0.16 mm | révèle les pointes/branches fines |
-| Repassage (*Ironing*)               | **Activé · surfaces supérieures** | lisse le dessus monochrome |
-| Motif de surface supérieure         | **Monotone**      | rendu uniforme sans stries |
-| Couches supérieures/inférieures     | **4–5**           | dessus pleins et nets |
-| Ordre des parois                    | **Extérieur en dernier** | bords plus propres |
-| Largeur de ligne paroi extérieure   | **0.4 mm**        | restitue les traits fins au plus juste |
+#### Onglet « Qualité »
 
-**💪 Résistance**
+| Chemin dans Bambu Studio | Valeur | But |
+|--------------------------|--------|-----|
+| Qualité → Hauteur de couche → **Hauteur de couche** | `0.12–0.16 mm` | 🪞 révèle les pointes/branches fines |
+| Qualité → Repassage → **Type de repassage** | `Toutes les surfaces sup.` | 🪞 lisse le dessus monochrome |
+| Qualité → Largeur de ligne → **Paroi extérieure** | `0.4 mm` | 🪞 restitue les traits fins au plus juste |
+| Qualité → Parois et surfaces → **Ordre d'impression des parois** | `Intérieur puis extérieur` | 🪞 bords extérieurs plus propres |
 
-| Réglage (Bambu Studio)              | Valeur conseillée | Pourquoi |
-|-------------------------------------|-------------------|----------|
-| Nombre de parois (*wall loops*)     | **3–4**           | les pointes fines deviennent du *plein paroi* = solide |
-| Remplissage                         | **20–25 % · Gyroïde** | rigidité isotrope du fond |
-| Couches solides bas                 | **4–5**           | bonne accroche relief ↔ fond |
-| Épaisseur du fond (paramètre outil) | **≥ 1.6 mm**      | empêche le voile/la casse de la plaque |
-| Température buse / plateau          | **220 °C / 60 °C**| adhérence inter-couches (anti-délamination) |
-| Brim                                | **5 mm si éléments détachés** | tient les fines pointes pendant l'impression |
-| Vitesse parois extérieures          | **≤ 150 mm/s**    | traits fins mieux formés, moins de vibrations |
+#### Onglet « Résistance »
 
-> 💡 Sur ces logos *spiky*, la solidité vient surtout des **parois** (monter à
-> 3–4) bien plus que du remplissage : une pointe large d'1 buse est alors 100 %
-> paroi. Combine avec l'**épaississement** et le **seuil** de l'outil pour qu'aucun
-> trait ne descende sous ≈ 1 largeur de buse.
+| Chemin dans Bambu Studio | Valeur | But |
+|--------------------------|--------|-----|
+| Résistance → Parois → **Boucles de paroi** | `3–4` | 💪 les pointes fines deviennent du *plein paroi* = solide |
+| Résistance → Coques sup./inf. → **Couches supérieures** | `4–5` | 💪🪞 dessus pleins et nets |
+| Résistance → Coques sup./inf. → **Couches inférieures** | `4–5` | 💪 bonne accroche relief ↔ fond |
+| Résistance → Coques sup./inf. → **Motif de surface supérieure** | `Monotone` | 🪞 rendu uniforme sans stries |
+| Résistance → Remplissage → **Densité de remplissage** | `20–25 %` | 💪 rigidité du fond |
+| Résistance → Remplissage → **Motif de remplissage clairsemé** | `Gyroïde` | 💪 rigidité isotrope |
+
+#### Onglet « Vitesse »
+
+| Chemin dans Bambu Studio | Valeur | But |
+|--------------------------|--------|-----|
+| Vitesse → Autres couches → **Paroi extérieure** | `≤ 150 mm/s` | 🪞 traits fins mieux formés, moins de vibrations |
+
+#### Onglet « Autres »
+
+| Chemin dans Bambu Studio | Valeur | But |
+|--------------------------|--------|-----|
+| Autres → Adhérence au plateau → **Type de bordure (*brim*)** | `Extérieur · 5 mm` si éléments détachés | 💪 tient les fines pointes pendant l'impression |
+
+#### Réglages du filament
+
+| Chemin dans Bambu Studio | Valeur | But |
+|--------------------------|--------|-----|
+| Filament → Température → **Température de la buse** | `220 °C` | 💪 adhérence inter-couches (anti-délamination) |
+| Filament → Température → **Température du plateau** | `60 °C` | 💪 accroche première couche |
+
+> 💡 Sur ces logos *spiky*, la solidité vient surtout des **parois** (Résistance →
+> Parois → Boucles de paroi à 3–4) bien plus que du remplissage : une pointe large
+> d'1 buse est alors 100 % paroi. Combine avec l'**épaississement** et le **seuil**
+> de l'outil pour qu'aucun trait ne descende sous ≈ 1 largeur de buse. L'épaisseur
+> du fond (≥ 1.6 mm) se règle **dans l'outil**, pas dans Bambu Studio.
