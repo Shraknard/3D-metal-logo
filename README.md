@@ -175,3 +175,37 @@ out/                   # sorties générées (non versionné)
 STL monochrome, dos plat (se pose directement sur le plateau). Pour les logos très
 fragmentés, privilégier un fond `hull`/`rectangle` ou un `offset` assez large pour
 que tout tienne en une seule pièce. PLA, buse 0.4 mm, pas de support nécessaire.
+
+### Réglages Bambu Studio (A1)
+
+Profil de base : **Bambu PLA Basic · buse 0.4 · plateau lisse PEI**. Orienter le
+logo **à plat, relief vers le haut** (l'arrière plat reste sur le plateau → aucun
+support). Le plateau A1 fait **256 × 256 mm** : garder la largeur du logo en-deçà.
+
+**🪞 Lissage / qualité de surface**
+
+| Réglage (Bambu Studio)              | Valeur conseillée | Pourquoi |
+|-------------------------------------|-------------------|----------|
+| Hauteur de couche                   | **0.12 mm** (fin) à 0.16 mm | révèle les pointes/branches fines |
+| Repassage (*Ironing*)               | **Activé · surfaces supérieures** | lisse le dessus monochrome |
+| Motif de surface supérieure         | **Monotone**      | rendu uniforme sans stries |
+| Couches supérieures/inférieures     | **4–5**           | dessus pleins et nets |
+| Ordre des parois                    | **Extérieur en dernier** | bords plus propres |
+| Largeur de ligne paroi extérieure   | **0.4 mm**        | restitue les traits fins au plus juste |
+
+**💪 Résistance**
+
+| Réglage (Bambu Studio)              | Valeur conseillée | Pourquoi |
+|-------------------------------------|-------------------|----------|
+| Nombre de parois (*wall loops*)     | **3–4**           | les pointes fines deviennent du *plein paroi* = solide |
+| Remplissage                         | **20–25 % · Gyroïde** | rigidité isotrope du fond |
+| Couches solides bas                 | **4–5**           | bonne accroche relief ↔ fond |
+| Épaisseur du fond (paramètre outil) | **≥ 1.6 mm**      | empêche le voile/la casse de la plaque |
+| Température buse / plateau          | **220 °C / 60 °C**| adhérence inter-couches (anti-délamination) |
+| Brim                                | **5 mm si éléments détachés** | tient les fines pointes pendant l'impression |
+| Vitesse parois extérieures          | **≤ 150 mm/s**    | traits fins mieux formés, moins de vibrations |
+
+> 💡 Sur ces logos *spiky*, la solidité vient surtout des **parois** (monter à
+> 3–4) bien plus que du remplissage : une pointe large d'1 buse est alors 100 %
+> paroi. Combine avec l'**épaississement** et le **seuil** de l'outil pour qu'aucun
+> trait ne descende sous ≈ 1 largeur de buse.
