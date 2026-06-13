@@ -39,7 +39,8 @@ def _openscad(stl, defs):
 
 def generate(image, outdir, *, target_w=120.0, text_h=3.0, base_h=1.6,
              nozzle=0.4, thicken_mm=0.0, backing="offset", backing_offset_mm=1.5,
-             work_px=1400, despeckle=0.01, rect_marg=5.0, threshold=-1):
+             work_px=1400, despeckle=0.01, rect_marg=5.0, threshold=-1,
+             mirror=False):
     os.makedirs(outdir, exist_ok=True)
     src_w, _ = Image.open(image).size
     mm_per_px = target_w / src_w
@@ -59,6 +60,8 @@ def generate(image, outdir, *, target_w=120.0, text_h=3.0, base_h=1.6,
            "--turdsize", "4", "--threshold", str(int(threshold)),
            "--debug-bmp", os.path.join(outdir, "binarized.png"),
            "--meta", os.path.join(outdir, "meta.json")]
+    if mirror:
+        cmd.append("--mirror")
 
     backing_code = 0
     use_backing_file = False
@@ -119,10 +122,12 @@ if __name__ == "__main__":
     ap.add_argument("--work-px", type=int, default=1400)
     ap.add_argument("--threshold", type=int, default=-1,
                     help="0..255 binarization cutoff; <0 = auto (Otsu)")
+    ap.add_argument("--mirror", action="store_true",
+                    help="flip horizontally (stamp mode)")
     a = ap.parse_args()
     res = generate(a.image, a.outdir, target_w=a.target_w, nozzle=a.nozzle,
                    thicken_mm=a.thicken, backing=a.backing,
                    backing_offset_mm=a.backing_offset, work_px=a.work_px,
-                   threshold=a.threshold)
+                   threshold=a.threshold, mirror=a.mirror)
     print(f"[ok] {res['stl']}  dims(mm) X={res['dims'][0]} Y={res['dims'][1]} "
           f"Z={res['dims'][2]}  {res['triangles']:,} tris  grow={res['grow_mm']}mm")

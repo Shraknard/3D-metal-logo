@@ -158,6 +158,9 @@ def main():
     ap.add_argument("--alphamax", type=float, default=1.0)
     ap.add_argument("--opttolerance", type=float, default=0.2)
     ap.add_argument("--invert", choices=["auto", "yes", "no"], default="auto")
+    ap.add_argument("--mirror", action="store_true",
+                    help="flip horizontally (for stamps: prints mirrored so the "
+                         "impression reads correctly)")
     ap.add_argument("--threshold", type=int, default=-1,
                     help="0..255 binarization cutoff; <0 = auto (Otsu)")
     ap.add_argument("--debug-bmp", default=None)
@@ -166,6 +169,10 @@ def main():
 
     fg, diag = load_fg(a.inp, a.invert, a.threshold)
     fg = despeckle(fg, a.despeckle)
+    if a.mirror:
+        # Flip before padding/dilation so relief AND backing mirror identically
+        # and stay aligned; content_bbox is measured afterwards on the result.
+        fg = np.fliplr(fg)
 
     pad = int(np.ceil(max(a.grow_px, a.backing_grow_px))) + 6
     base = np.pad(fg, pad)

@@ -111,6 +111,7 @@ def do_generate():
             backing_offset_mm=float(p.get("backing_offset_mm", 1.5)),
             work_px=int(p.get("work_px", 1400)),
             threshold=int(p.get("threshold", -1)),
+            mirror=bool(p.get("mirror", False)),
         )
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()

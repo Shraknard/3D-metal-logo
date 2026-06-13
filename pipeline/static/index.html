@@ -86,6 +86,12 @@
 
     <label>Épaississement <span class="val" id="thickenV">0.0</span> mm</label>
     <div class="row"><input type="range" id="thicken" min="0" max="3" step="0.1" value="0"></div>
+
+    <label class="row" style="margin:10px 0 0; color:var(--mut)">
+      <input type="checkbox" id="mirror" style="width:auto;flex:none">
+      Inverser (mode tampon)
+    </label>
+    <div class="sub" style="margin-top:4px">Miroir horizontal : imprime à l'envers pour que l'empreinte tamponnée soit à l'endroit.</div>
   </div>
 
   <div class="grp">
@@ -290,6 +296,7 @@ $('gen').addEventListener('click', async () => {
     target_w:+$('tw').value, text_h:+$('th').value, base_h:+$('bh').value,
     backing:$('backing').value, backing_offset_mm:+$('off').value,
     work_px:+$('detail').value, threshold:curThreshold(),
+    mirror:$('mirror').checked,
   };
   try {
     const r = await fetch('/generate', { method:'POST',
