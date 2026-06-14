@@ -5,104 +5,216 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Metal Logo → STL</title>
 <style>
-  :root { --bg:#16181d; --panel:#1f232b; --line:#2c313b; --txt:#e7e9ee;
-          --mut:#9aa3b2; --acc:#e6483d; --ok:#46c178; }
+  :root {
+    --bg:#0e1014; --glass:rgba(22,25,32,0.72); --glass-2:rgba(30,34,43,0.92);
+    --brd:rgba(255,255,255,0.08); --line:#2c313b; --txt:#eef1f6; --mut:#9aa3b2;
+    --acc:#e6483d; --acc2:#ff6f63; --ok:#46c178; --shadow:0 12px 40px rgba(0,0,0,.5);
+  }
   * { box-sizing:border-box; }
-  body { margin:0; height:100vh; display:flex; font:14px/1.4 system-ui,sans-serif;
+  html,body { margin:0; height:100%; overflow:hidden; }
+  body { font:13px/1.45 "Inter",system-ui,-apple-system,sans-serif;
          background:var(--bg); color:var(--txt); }
-  #panel { width:624px; flex:none; background:var(--panel);
-           border-right:1px solid var(--line); padding:16px; overflow-y:auto;
-           display:flex; flex-direction:column; }
-  body.collapsed #panel { display:none; }
-  /* groups flow into 2 balanced columns so nothing needs scrolling; the columns
-     keep the SAME control width as before — the panel is only wider, not the rows. */
-  #groups { column-count:2; column-gap:14px; }
-  #groups > .grp { break-inside:avoid; }
-  h1 { font-size:15px; margin:0 0 4px; letter-spacing:.5px; }
-  .sub { color:var(--mut); font-size:12px; margin-bottom:14px; }
-  .grp { border:1px solid var(--line); border-radius:8px; padding:10px 12px;
-         margin-bottom:12px; }
-  .grp h2 { font-size:11px; text-transform:uppercase; letter-spacing:.8px;
-            color:var(--mut); margin:0 0 8px; }
-  label { display:block; margin:9px 0 3px; font-size:12px; color:var(--mut); }
-  .row { display:flex; align-items:center; gap:8px; }
-  .row input[type=range] { flex:1; }
-  .val { width:54px; text-align:right; font-variant-numeric:tabular-nums;
-         color:var(--txt); }
-  select, input[type=number], input[type=file] { width:100%; background:#12151a;
-    color:var(--txt); border:1px solid var(--line); border-radius:6px;
-    padding:6px 8px; }
-  button { width:100%; padding:11px; border:0; border-radius:8px; font-weight:600;
-           cursor:pointer; }
-  #gen { background:var(--acc); color:#fff; font-size:15px; margin-top:4px; }
-  #gen:disabled { opacity:.5; cursor:wait; }
-  #status { font-size:12px; color:var(--mut); margin-top:8px; min-height:16px; }
-  #dims { display:flex; gap:6px; margin-top:8px; }
-  #dims div { flex:1; text-align:center; background:#12151a; border-radius:6px;
-              padding:6px 2px; }
+
+  /* ---------- 3D viewport (full-bleed background) ---------- */
+  #view { position:fixed; inset:0; z-index:0; }
+  #hint { position:fixed; left:18px; bottom:16px; z-index:5; color:var(--mut);
+          font-size:11px; pointer-events:none; opacity:.7; }
+
+  /* ---------- top app bar (glass) ---------- */
+  #topbar { position:fixed; top:0; left:0; right:0; height:58px; z-index:12;
+            display:flex; align-items:center; gap:14px; padding:0 16px;
+            background:var(--glass); backdrop-filter:blur(16px) saturate(1.3);
+            border-bottom:1px solid var(--brd); }
+  .brand { font-weight:700; letter-spacing:.6px; font-size:14px; white-space:nowrap;
+           background:linear-gradient(90deg,#fff,#c7ccd6); -webkit-background-clip:text;
+           background-clip:text; color:transparent; }
+  .brand small { color:var(--acc); -webkit-text-fill-color:var(--acc); }
+  .spacer { flex:1; }
+  #status { font-size:12px; color:var(--mut); max-width:32ch; overflow:hidden;
+            text-overflow:ellipsis; white-space:nowrap; }
+
+  /* segmented control */
+  .seg { display:inline-flex; background:rgba(0,0,0,.28); border:1px solid var(--brd);
+         border-radius:11px; padding:3px; gap:2px; }
+  .seg-btn { border:0; background:transparent; color:var(--mut); cursor:pointer;
+             font:600 12.5px/1 inherit; padding:7px 14px; border-radius:8px;
+             display:flex; align-items:center; gap:6px; transition:.18s; }
+  .seg-btn:hover { color:var(--txt); }
+  .seg-btn.active { color:#fff; background:linear-gradient(180deg,var(--acc2),var(--acc));
+                    box-shadow:0 3px 12px rgba(230,72,61,.4); }
+  .seg-btn .dot { width:9px; height:9px; border-radius:50%; background:currentColor;
+                  opacity:.85; }
+  .seg-btn[data-fmt=magnet] .dot { border-radius:50%; }
+  .seg-btn[data-fmt=standard] .dot { border-radius:2px; }
+  .seg-btn[data-fmt=stamp] .dot { border-radius:2px 2px 6px 6px; }
+
+  /* buttons */
+  button, .btn { font:inherit; cursor:pointer; border:0; border-radius:10px; }
+  .btn-primary { background:linear-gradient(180deg,var(--acc2),var(--acc)); color:#fff;
+                 font-weight:700; padding:9px 18px; box-shadow:0 4px 14px rgba(230,72,61,.35);
+                 transition:.15s; }
+  .btn-primary:hover { filter:brightness(1.07); transform:translateY(-1px); }
+  .btn-primary:disabled { opacity:.45; cursor:not-allowed; filter:none; transform:none; }
+  .btn-ghost { display:inline-flex; align-items:center; gap:5px; text-decoration:none;
+               color:var(--txt); background:rgba(255,255,255,.06); border:1px solid var(--brd);
+               padding:8px 12px; border-radius:10px; font-size:12.5px; font-weight:600;
+               transition:.15s; }
+  .btn-ghost:hover { background:rgba(255,255,255,.12); }
+
+  /* ---------- floating settings panel (glass) ---------- */
+  #panel { position:fixed; left:16px; top:72px; bottom:16px; width:332px; z-index:10;
+           padding:6px 14px 14px; overflow-y:auto; border-radius:16px;
+           background:var(--glass); backdrop-filter:blur(18px) saturate(1.3);
+           border:1px solid var(--brd); box-shadow:var(--shadow);
+           transition:transform .28s cubic-bezier(.4,0,.2,1), opacity .28s; }
+  body.collapsed #panel { transform:translateX(calc(-100% - 28px)); opacity:0;
+                          pointer-events:none; }
+  #panel::-webkit-scrollbar { width:8px; }
+  #panel::-webkit-scrollbar-thumb { background:#333a46; border-radius:8px; }
+
+  #panelToggle { position:fixed; top:84px; left:352px; z-index:11; width:30px; height:34px;
+                 display:flex; align-items:center; justify-content:center; font-size:13px;
+                 color:var(--txt); background:var(--glass-2); border:1px solid var(--brd);
+                 border-radius:9px; box-shadow:var(--shadow); transition:left .28s cubic-bezier(.4,0,.2,1); }
+  body.collapsed #panelToggle { left:12px; }
+
+  .phead { position:sticky; top:0; padding:12px 0 10px; margin-bottom:2px;
+           background:linear-gradient(var(--glass),var(--glass) 70%,transparent); z-index:1; }
+  .ptitle { font-size:13px; font-weight:700; letter-spacing:.3px; }
+  .psub { color:var(--mut); font-size:11.5px; margin-top:3px; }
+
+  .sec { border:1px solid var(--brd); border-radius:12px; padding:11px 13px;
+         margin-bottom:11px; background:rgba(255,255,255,.02); }
+  .sec > h2 { font-size:10.5px; text-transform:uppercase; letter-spacing:1px;
+              color:var(--mut); margin:0 0 9px; display:flex; align-items:center; gap:7px; }
+  .sec > h2::before { content:""; width:6px; height:6px; border-radius:50%;
+                      background:var(--acc); box-shadow:0 0 8px var(--acc); }
+  .sec.cond { animation:reveal .25s ease; }
+  @keyframes reveal { from { opacity:0; transform:translateY(-4px); } to { opacity:1; } }
+
+  label { display:block; margin:10px 0 5px; font-size:11.5px; color:var(--mut); }
+  label:first-of-type { margin-top:2px; }
+  .row { display:flex; align-items:center; gap:9px; }
+  .val { min-width:46px; padding:2px 8px; text-align:right; font-variant-numeric:tabular-nums;
+         color:var(--txt); background:rgba(0,0,0,.3); border-radius:6px; font-size:12px; }
+  input[type=range] { flex:1; height:5px; border-radius:5px; accent-color:var(--acc);
+                      background:#363c48; cursor:pointer; }
+  select { width:100%; background:#12151b; color:var(--txt); border:1px solid var(--brd);
+           border-radius:8px; padding:8px 9px; font:inherit; cursor:pointer; }
+  .hint { color:var(--mut); font-size:11px; margin-top:6px; line-height:1.4; }
+
+  /* file picker */
+  .file-btn { display:flex; align-items:center; justify-content:center; gap:8px;
+              padding:14px; border:1.5px dashed var(--line); border-radius:10px;
+              color:var(--mut); cursor:pointer; transition:.15s; text-align:center; }
+  .file-btn:hover { border-color:var(--acc); color:var(--txt); background:rgba(230,72,61,.06); }
+  .file-btn input { display:none; }
+
+  /* toggle switch */
+  .switch { display:flex; align-items:center; gap:10px; cursor:pointer; margin:12px 0 2px;
+            font-size:12.5px; color:var(--txt); }
+  .switch input { display:none; }
+  .switch .track { width:38px; height:22px; border-radius:11px; background:#3a3f4b;
+                   position:relative; transition:.2s; flex:none; }
+  .switch .track::after { content:""; position:absolute; top:3px; left:3px; width:16px;
+                          height:16px; border-radius:50%; background:#fff; transition:.2s; }
+  .switch input:checked + .track { background:linear-gradient(180deg,var(--acc2),var(--acc)); }
+  .switch input:checked + .track::after { transform:translateX(16px); }
+
+  /* dims readout */
+  #dims { display:flex; gap:7px; margin-top:4px; }
+  #dims div { flex:1; text-align:center; background:rgba(0,0,0,.3); border:1px solid var(--brd);
+              border-radius:9px; padding:8px 2px; }
   #dims b { display:block; font-size:15px; }
-  #dims small { color:var(--mut); }
+  #dims small { color:var(--mut); font-size:10px; }
   #xLab b{color:#ff6b6b} #yLab b{color:#5bd75b} #zLab b{color:#6ab0ff}
-  #view { flex:1; position:relative; min-width:0; }
-  #hint { position:absolute; left:12px; bottom:10px; color:var(--mut);
-          font-size:11px; pointer-events:none; }
-  /* enlarged previews docked beside the panel, top-left of the 3D view */
-  #previews { position:absolute; left:12px; top:12px; z-index:4;
-              width:clamp(260px, 24vw, 420px); display:flex; flex-direction:column;
-              gap:10px; pointer-events:none; }
-  .pv { background:#0d0f13ee; border:1px solid var(--line); border-radius:8px;
-        padding:8px; backdrop-filter:blur(2px); }
-  .pv .pvLab { font-size:10px; text-transform:uppercase; letter-spacing:.8px;
-               color:var(--mut); margin-bottom:6px; }
-  .pv img { width:100%; display:block; border-radius:4px; background:#fff; }
-  #thumb { background:#000; }
-  /* collapse tab on the left edge of the view (panel's right edge) */
-  #collapse { position:absolute; left:0; top:50%; transform:translateY(-50%);
-              width:20px; height:64px; padding:0; z-index:6; cursor:pointer;
-              background:var(--line); color:var(--txt); font-size:12px;
-              border:1px solid var(--line); border-left:0;
-              border-radius:0 8px 8px 0; }
-  #collapse:hover { background:#39404c; }
-  .hidden { display:none; }
+
+  /* ---------- floating previews (original + binarized) ---------- */
+  #previews { position:fixed; right:16px; bottom:16px; z-index:9; display:flex; gap:12px;
+              align-items:flex-end; }
+  .pv { width:150px; padding:9px; border-radius:13px; background:var(--glass);
+        backdrop-filter:blur(16px) saturate(1.2); border:1px solid var(--brd);
+        box-shadow:var(--shadow); cursor:zoom-in; transition:transform .15s; }
+  .pv:hover { transform:translateY(-4px); }
+  .pv .pvLab { font-size:10px; text-transform:uppercase; letter-spacing:.7px;
+               color:var(--mut); margin-bottom:7px; display:flex; align-items:center; gap:6px; }
+  .pv .pvLab::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--acc); }
+  .pv img { width:100%; display:block; border-radius:7px; background:#fff; }
+
+  /* lightbox */
+  #lightbox { position:fixed; inset:0; z-index:30; display:none; align-items:center;
+              justify-content:center; background:rgba(5,6,9,.82); backdrop-filter:blur(6px);
+              cursor:zoom-out; }
+  #lightbox.open { display:flex; }
+  #lightbox img { max-width:88vw; max-height:86vh; border-radius:12px;
+                  box-shadow:0 30px 80px #000; background:#fff; }
+
+  /* top progress bar */
+  #bar { position:fixed; top:0; left:0; height:3px; width:100%; z-index:40;
+         transform-origin:left; transform:scaleX(0); opacity:0;
+         background:linear-gradient(90deg,var(--acc2),var(--acc)); }
+  body.busy #bar { opacity:1; animation:load 1.1s ease-in-out infinite; }
+  @keyframes load { 0%{transform:scaleX(.05)} 50%{transform:scaleX(.65)} 100%{transform:scaleX(.98)} }
+
+  .hidden { display:none !important; }
 </style>
 </head>
 <body>
-<div id="panel">
-  <h1>METAL LOGO → STL</h1>
-  <div class="sub">Bambu A1 · PLA · monochrome</div>
+<div id="view"></div>
+<div id="hint">clic-glisser : tourner · molette : zoom · clic droit : déplacer</div>
 
-  <div id="groups">
-  <div class="grp">
-    <h2>Format</h2>
-    <select id="fmt">
-      <option value="standard" selected>Standard (logo seul)</option>
-      <option value="magnet">Aimant (poches au dos)</option>
-      <option value="stamp">Tampon (miroir + manche)</option>
-    </select>
-    <div id="fmtNote" class="sub" style="margin-top:6px"></div>
-    <div class="sub" style="margin-top:4px">Le format ne fait que pré-régler les valeurs par défaut. Tous les paramètres ci-dessous restent réglables dans tous les formats.</div>
+<div id="bar"></div>
+
+<div id="topbar">
+  <div class="brand">◳ MÉTAL&nbsp;LOGO <small>→ STL</small></div>
+  <div class="seg" id="fmtSeg">
+    <button class="seg-btn active" data-fmt="standard"><span class="dot"></span>Standard</button>
+    <button class="seg-btn" data-fmt="magnet"><span class="dot"></span>Aimant</button>
+    <button class="seg-btn" data-fmt="stamp"><span class="dot"></span>Tampon</button>
+  </div>
+  <div class="spacer"></div>
+  <div id="status">Charge une image pour commencer.</div>
+  <button id="gen" class="btn-primary" disabled>Générer</button>
+  <a id="dl" class="btn-ghost hidden" download="logo.stl">⬇ STL</a>
+  <a id="dlHandle" class="btn-ghost hidden" download="manche.stl">⬇ Manche</a>
+</div>
+
+<div id="panelToggle" title="Replier / déplier">◀</div>
+
+<div id="panel">
+  <div class="phead">
+    <div class="ptitle">Réglages</div>
+    <div class="psub" id="fmtNote"></div>
   </div>
 
-  <div class="grp">
+  <div class="sec">
     <h2>Image source</h2>
-    <input type="file" id="file" accept="image/*" />
-    <div id="imgInfo" class="sub" style="margin:8px 0 0"></div>
+    <label class="file-btn">
+      <span>⬆ Choisir une image…</span>
+      <input type="file" id="file" accept="image/*" />
+    </label>
+    <div id="imgInfo" class="hint"></div>
+
+    <label class="switch">
+      <input type="checkbox" id="inv">
+      <span class="track"></span>
+      <span>Logo clair sur fond sombre (inverser)</span>
+    </label>
+    <div class="hint">Active si le logo est blanc/clair sur un fond noir.</div>
 
     <div id="thrWrap" class="hidden">
-      <label>Seuil de binarisation
-        <span class="val" id="thrV">Auto</span></label>
-      <div class="row">
-        <input type="range" id="thr" min="1" max="254" step="1" value="128" disabled>
-      </div>
-      <label class="row" style="margin:2px 0 0; color:var(--mut)">
-        <input type="checkbox" id="thrAuto" checked style="width:auto;flex:none">
-        Auto (Otsu)
+      <label>Seuil de binarisation <span class="val" id="thrV">Auto</span></label>
+      <div class="row"><input type="range" id="thr" min="1" max="254" step="1" value="128" disabled></div>
+      <label class="switch">
+        <input type="checkbox" id="thrAuto" checked>
+        <span class="track"></span>
+        <span>Auto (Otsu)</span>
       </label>
-      <div class="sub" style="margin-top:4px">Monte le seuil pour récupérer les traits fins/clairs ; descends-le pour affiner. Aperçu à droite.</div>
+      <div class="hint">Monte le seuil pour récupérer les traits fins/clairs ; descends-le pour affiner. Aperçus en bas à droite.</div>
     </div>
   </div>
 
-  <div class="grp">
+  <div class="sec">
     <h2>Impression</h2>
     <label>Buse (nozzle)</label>
     <select id="nozzle">
@@ -113,29 +225,30 @@
       <option value="0.6">0.6 mm</option>
       <option value="0.8">0.8 mm</option>
     </select>
-    <div class="sub" style="margin-top:4px">Garantit un trait min. ≈ 1 buse (anti-traits-fins).</div>
+    <div class="hint">Garantit un trait min. ≈ 1 buse (anti-traits-fins).</div>
 
     <label>Épaississement <span class="val" id="thickenV">0.0</span> mm</label>
     <div class="row"><input type="range" id="thicken" min="0" max="3" step="0.1" value="0"></div>
 
-    <label class="row" style="margin:10px 0 0; color:var(--mut)">
-      <input type="checkbox" id="mirror" style="width:auto;flex:none">
-      Inverser (miroir horizontal)
+    <label class="switch">
+      <input type="checkbox" id="mirror">
+      <span class="track"></span>
+      <span>Inverser (miroir horizontal)</span>
     </label>
-    <div class="sub" style="margin-top:4px">Imprime à l'envers (activé par défaut en mode Tampon).</div>
+    <div class="hint">Imprime à l'envers (activé par défaut en mode Tampon).</div>
   </div>
 
-  <div class="grp">
+  <div class="sec">
     <h2>Dimensions</h2>
     <label>Largeur du logo <span class="val" id="twV">120</span> mm</label>
     <div class="row"><input type="range" id="tw" min="40" max="250" step="1" value="120"></div>
     <label>Hauteur du relief <span class="val" id="thV">3.0</span> mm</label>
     <div class="row"><input type="range" id="th" min="0.6" max="8" step="0.1" value="3"></div>
     <label>Épaisseur du fond <span class="val" id="bhV">1.6</span> mm</label>
-    <div class="row"><input type="range" id="bh" min="0.4" max="5" step="0.1" value="1.6"></div>
+    <div class="row"><input type="range" id="bh" min="0.4" max="6" step="0.1" value="1.6"></div>
   </div>
 
-  <div class="grp" id="backingGrp">
+  <div class="sec">
     <h2>Fond / support</h2>
     <label>Type</label>
     <select id="backing">
@@ -147,11 +260,11 @@
     <div id="offWrap">
       <label>Marge de l'offset <span class="val" id="offV">1.5</span> mm</label>
       <div class="row"><input type="range" id="off" min="0" max="20" step="0.5" value="1.5"></div>
-      <div class="sub">Monte jusqu'à ce que les éléments détachés se rejoignent.</div>
+      <div class="hint">Monte jusqu'à ce que les éléments détachés se rejoignent.</div>
     </div>
   </div>
 
-  <div class="grp">
+  <div class="sec cond hidden" id="secMagnet">
     <h2>Aimants (poches au dos)</h2>
     <label>Nombre d'aimants</label>
     <select id="magN">
@@ -162,10 +275,10 @@
     <div class="row"><input type="range" id="magThick" min="1" max="6" step="0.5" value="2"></div>
     <label>Écartement des aimants ±<span class="val" id="magGapV">60</span> mm</label>
     <div class="row"><input type="range" id="magGap" min="10" max="150" step="1" value="60"></div>
-    <div class="sub" style="margin-top:4px">Aimants néodyme Ø8 mm collés dans les poches au dos. Distance entre l'axe des poches et le centre. N'a d'effet qu'en format Aimant.</div>
+    <div class="hint">Aimants néodyme Ø8 mm collés dans les poches au dos. Distance entre l'axe des poches et le centre.</div>
   </div>
 
-  <div class="grp">
+  <div class="sec">
     <h2>Qualité / poids</h2>
     <label>Détail (résolution de tracé)</label>
     <select id="detail">
@@ -174,35 +287,31 @@
       <option value="2000">Élevé ~2000 px</option>
       <option value="3000">Max ~3000 px (lourd)</option>
     </select>
-    <div class="sub" style="margin-top:4px">Plafonne les triangles. Au-delà de ~1400 px, aucun gain visible à l'impression.</div>
+    <div class="hint">Plafonne les triangles. Au-delà de ~1400 px, aucun gain visible à l'impression.</div>
   </div>
-  </div><!-- /#groups -->
 
-  <button id="gen" disabled>Valider & générer</button>
-  <div id="status">Charge une image pour commencer.</div>
-  <div id="dims" class="hidden">
-    <div id="xLab"><b>–</b><small>X mm</small></div>
-    <div id="yLab"><b>–</b><small>Y mm</small></div>
-    <div id="zLab"><b>–</b><small>Z mm</small></div>
-  </div>
-  <a id="dl" class="hidden" download="logo.stl"><button style="background:#2c313b;color:#fff;margin-top:8px">⬇ Télécharger le STL</button></a>
-  <a id="dlHandle" class="hidden" download="manche.stl"><button style="background:#2c313b;color:#fff;margin-top:8px">⬇ Télécharger le manche (STL)</button></a>
-</div>
-
-<div id="view">
-  <button id="collapse" title="Replier / déplier le panneau">◀</button>
-  <div id="previews">
-    <div class="pv hidden" id="pvPreview">
-      <div class="pvLab">Aperçu binarisation</div>
-      <img id="preview" alt="aperçu binarisé" />
-    </div>
-    <div class="pv hidden" id="pvThumb">
-      <div class="pvLab">Logo généré (binarisé)</div>
-      <img id="thumb" alt="binarisé" />
+  <div class="sec" id="dimsSec">
+    <h2>Cotes du modèle</h2>
+    <div id="dims">
+      <div id="xLab"><b>–</b><small>X mm</small></div>
+      <div id="yLab"><b>–</b><small>Y mm</small></div>
+      <div id="zLab"><b>–</b><small>Z mm</small></div>
     </div>
   </div>
-  <div id="hint">clic-glisser : tourner · molette : zoom · clic droit : déplacer</div>
 </div>
+
+<div id="previews">
+  <div class="pv hidden" id="pvOrig">
+    <div class="pvLab">Logo d'origine</div>
+    <img id="orig" alt="logo original" />
+  </div>
+  <div class="pv hidden" id="pvBin">
+    <div class="pvLab">Binarisation</div>
+    <img id="preview" alt="aperçu binarisé" />
+  </div>
+</div>
+
+<div id="lightbox"><img id="lightImg" alt="aperçu agrandi" /></div>
 
 <script type="importmap">
 { "imports": { "three": "/vendor/three.module.js" } }
@@ -214,11 +323,11 @@ import { STLLoader } from '/vendor/jsm/loaders/STLLoader.js';
 
 // ---------- 3D scene ----------
 const viewEl = document.getElementById('view');
-const renderer = new THREE.WebGLRenderer({ antialias:true });
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
 renderer.setPixelRatio(devicePixelRatio);
 viewEl.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x12141a);
+scene.background = new THREE.Color(0x0e1014);
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000);
 camera.up.set(0,0,1);                       // Z up (STL is Z-up)
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -237,13 +346,6 @@ function resize() {
   renderer.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
-
-// collapse / expand the whole side panel (the 3D view + previews reclaim the space)
-document.getElementById('collapse').addEventListener('click', e => {
-  const collapsed = document.body.classList.toggle('collapsed');
-  e.currentTarget.textContent = collapsed ? '▶' : '◀';
-  resize();
-});
 
 function makeLabel(text, color) {
   const c = document.createElement('canvas'); c.width=256; c.height=64;
@@ -304,31 +406,60 @@ for (const [s,v] of Object.entries(sliders)) {
 function syncOffVis() { $('offWrap').style.display = $('backing').value==='offset' ? '' : 'none'; }
 $('backing').addEventListener('change', syncOffVis); syncOffVis();
 
-// The format ONLY pre-fills sensible defaults — every control stays editable in
-// every format. Switching format re-applies that format's defaults.
+// ---------- format = segmented control ----------
+// The format seeds sensible DEFAULTS and shows the format-specific sections; all
+// common controls stay editable everywhere.
+let curFmt = 'standard';
 const FMT_DEFAULTS = {
   standard: { th:3.0, bh:1.6, backing:'offset', mirror:false,
-    note:'Logo seul. Le fond suit le type choisi ci-dessous.' },
+    note:'Logo seul en relief sur le fond choisi ci-dessous — dos plat.' },
   magnet:   { th:3.0, bh:2.7, backing:'offset', mirror:false,
-    note:'Poches à aimants percées au dos (groupe « Aimants »). Le relief traverse la face avant comme en standard. Augmente la marge du fond ou passe en Rectangle si les poches débordent.' },
+    note:'Poches à aimants percées au dos. Le relief traverse la face avant comme en standard. Augmente la marge du fond ou passe en Rectangle si les poches débordent.' },
   stamp:    { th:3.5, bh:4.0, backing:'rect', mirror:true,
-    note:'Relief en miroir sur une plaque rigide, cavité au dos pour le manche (téléchargé à part). Assemblage en force (jeu ~0.2 mm).' },
+    note:'Relief en miroir sur une plaque rigide ; cavité au dos pour le manche (téléchargé à part). Assemblage en force (jeu ~0.2 mm).' },
 };
+function syncFmtVis() {
+  $('secMagnet').classList.toggle('hidden', curFmt!=='magnet');
+}
 function applyFmtDefaults() {
-  const d = FMT_DEFAULTS[$('fmt').value];
+  const d = FMT_DEFAULTS[curFmt];
   $('th').value = d.th; $('bh').value = d.bh;
   $('backing').value = d.backing; $('mirror').checked = d.mirror;
-  if ($('fmt').value === 'magnet')
+  if (curFmt === 'magnet')
     $('magGap').value = Math.round(+$('tw').value/2 + 4);  // just outside the logo
   $('fmtNote').textContent = d.note;
   ['th','bh','magGap'].forEach(s => $(s).dispatchEvent(new Event('input')));
-  syncOffVis();
+  syncOffVis(); syncFmtVis();
 }
-$('fmt').addEventListener('change', applyFmtDefaults); applyFmtDefaults();
+$('fmtSeg').querySelectorAll('.seg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $('fmtSeg').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    curFmt = btn.dataset.fmt;
+    applyFmtDefaults();
+  });
+});
+applyFmtDefaults();
 
-// ---------- binarization threshold ----------
-// current cutoff sent to the backend: -1 == auto (Otsu)
+// ---------- panel collapse ----------
+$('panelToggle').addEventListener('click', () => {
+  const c = document.body.classList.toggle('collapsed');
+  $('panelToggle').textContent = c ? '▶' : '◀';
+});
+
+// ---------- lightbox ----------
+document.querySelectorAll('.pv').forEach(card => {
+  card.addEventListener('click', () => {
+    const img = card.querySelector('img');
+    if (!img.src) return;
+    $('lightImg').src = img.src; $('lightbox').classList.add('open');
+  });
+});
+$('lightbox').addEventListener('click', () => $('lightbox').classList.remove('open'));
+
+// ---------- binarization ----------
 function curThreshold() { return $('thrAuto').checked ? -1 : +$('thr').value; }
+function curInvert() { return $('inv').checked ? 'no' : 'auto'; }  // 'no' = bright pixels are ink
 
 let seeded = false;          // slider value seeded from the auto Otsu cutoff?
 async function refreshPreview() {
@@ -336,11 +467,11 @@ async function refreshPreview() {
   try {
     const r = await fetch('/preview', { method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ threshold: curThreshold() }) });
+      body:JSON.stringify({ threshold: curThreshold(), invert: curInvert() }) });
     const j = await r.json();
     if (!j.ok) { $('status').textContent = 'Erreur: '+j.error; return; }
     if (!seeded && j.otsu != null) { $('thr').value = j.otsu; seeded = true; }
-    $('preview').src = j.preview_url; $('pvPreview').classList.remove('hidden');
+    $('preview').src = j.preview_url; $('pvBin').classList.remove('hidden');
   } catch (err) { $('status').textContent = 'Erreur aperçu: '+err; }
 }
 let previewTimer = null;
@@ -352,10 +483,8 @@ $('thrAuto').addEventListener('change', () => {
   $('thrV').textContent = auto ? 'Auto' : $('thr').value;
   refreshPreview();
 });
-$('thr').addEventListener('input', () => {
-  $('thrV').textContent = $('thr').value;
-  schedulePreview();
-});
+$('thr').addEventListener('input', () => { $('thrV').textContent = $('thr').value; schedulePreview(); });
+$('inv').addEventListener('change', () => { seeded = false; refreshPreview(); });
 
 let hasImage = false;
 $('file').addEventListener('change', async e => {
@@ -365,27 +494,28 @@ $('file').addEventListener('change', async e => {
   const r = await fetch('/upload', { method:'POST', body:fd });
   const j = await r.json();
   if (!j.ok) { $('status').textContent = 'Erreur: '+j.error; return; }
-  hasImage = true; $('gen').disabled = false;
-  seeded = false;
-  $('imgInfo').textContent = `${j.width}×${j.height} px chargée.`;
+  hasImage = true; $('gen').disabled = false; seeded = false;
+  $('imgInfo').textContent = `${f.name} · ${j.width}×${j.height} px`;
+  $('orig').src = '/out/upload.png?t=' + Date.now(); $('pvOrig').classList.remove('hidden');
   $('thrWrap').classList.remove('hidden');
-  $('status').textContent = 'Prêt. Règle les paramètres puis « Valider ».';
+  $('status').textContent = 'Prêt. Règle les paramètres puis « Générer ».';
   refreshPreview();
 });
 
+// ---------- generate ----------
 const loader = new STLLoader();
 $('gen').addEventListener('click', async () => {
   if (!hasImage) return;
-  $('gen').disabled = true;
+  $('gen').disabled = true; document.body.classList.add('busy');
   const t0 = performance.now();
   $('status').textContent = 'Génération en cours…';
   const params = {
     nozzle:+$('nozzle').value, thicken_mm:+$('thicken').value,
     target_w:+$('tw').value, text_h:+$('th').value, base_h:+$('bh').value,
     backing:$('backing').value, backing_offset_mm:+$('off').value,
-    work_px:+$('detail').value, threshold:curThreshold(),
+    work_px:+$('detail').value, threshold:curThreshold(), invert:curInvert(),
     mirror:$('mirror').checked,
-    fmt:$('fmt').value, magnet_n:+$('magN').value,
+    fmt:curFmt, magnet_n:+$('magN').value,
     mag_h_mm:+$('magThick').value, mag_gap_mm:+$('magGap').value,
   };
   try {
@@ -395,21 +525,19 @@ $('gen').addEventListener('click', async () => {
     if (!j.ok) { $('status').textContent = 'Erreur: '+j.error; return; }
     loader.load(j.stl_url, geom => {
       showMesh(geom);
-      $('dims').classList.remove('hidden');
       const dl = $('dl'); dl.href = j.stl_url; dl.classList.remove('hidden');
       const dlH = $('dlHandle');
       if (j.handle_url) { dlH.href = j.handle_url; dlH.classList.remove('hidden'); }
       else dlH.classList.add('hidden');
-      $('thumb').src = j.binarized_url; $('pvThumb').classList.remove('hidden');
+      $('preview').src = j.binarized_url; $('pvBin').classList.remove('hidden');
       const dt = ((performance.now()-t0)/1000).toFixed(1);
       $('status').innerHTML =
-        `OK en ${dt}s · ${j.triangles.toLocaleString()} triangles · ` +
-        `trait min ≈ ${(j.grow_mm*2).toFixed(2)}mm`;
+        `OK en ${dt}s · ${j.triangles.toLocaleString()} tris · trait min ≈ ${(j.grow_mm*2).toFixed(2)}mm`;
     }, undefined, err => { $('status').textContent='Erreur chargement STL'; console.error(err); });
   } catch (err) {
     $('status').textContent = 'Erreur réseau: '+err;
   } finally {
-    $('gen').disabled = false;
+    $('gen').disabled = false; document.body.classList.remove('busy');
   }
 });
 </script>

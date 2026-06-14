@@ -86,6 +86,7 @@ Puis ouvrir **http://127.0.0.1:5000**.
 |------------------------|-------|
 | **Format**             | `standard` (logo seul) · `aimant` (poches au dos) · `tampon` (miroir + manche). Voir [Formats](#-formats) |
 | **Seuil de binarisation** | coche *Auto (Otsu)* ou règle manuellement le seuil 1–254. Aperçu live. Seuil haut → récupère les traits clairs/antialiasés ; seuil bas → trait plus net |
+| **Logo clair sur fond sombre** | inverse la polarité (l'encre = les pixels clairs) pour les logos blancs/clairs sur fond noir. Décoché = détection auto (`--invert auto`) |
 | **Buse**               | garantit un trait min ≈ 1 buse (anti traits-fins non imprimables) |
 | **Épaississement**     | gras supplémentaire des traits (mm) |
 | **Largeur du logo**    | largeur finale du relief (mm) |
@@ -130,6 +131,9 @@ l'assemblage permanent.
 
 # Forcer un seuil de binarisation manuel (0–255 ; défaut -1 = Otsu auto)
 ./.venv/bin/python pipeline/generate.py mon_logo.png --threshold 200
+
+# Logo clair sur fond sombre (l'encre = les pixels clairs)
+./.venv/bin/python pipeline/generate.py mon_logo.png --invert no
 
 # Format aimant : 4 poches, aimants de 2 mm, écartées de ±55 mm du centre
 ./.venv/bin/python pipeline/generate.py mon_logo.png --format magnet \

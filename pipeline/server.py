@@ -74,8 +74,9 @@ def preview():
         return jsonify(ok=False, error="Charge d'abord une image."), 400
     p = request.get_json(force=True) or {}
     thr = int(p.get("threshold", -1))
+    inv = str(p.get("invert", "auto"))
     try:
-        fg, diag = l2s.load_fg(UPLOAD, "auto", thr)
+        fg, diag = l2s.load_fg(UPLOAD, inv, thr)
         fg = l2s.despeckle(fg, 0.01)
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()
@@ -116,6 +117,7 @@ def do_generate():
             magnet_n=int(p.get("magnet_n", 2)),
             mag_h_mm=float(p.get("mag_h_mm", 2.0)),
             mag_gap_mm=float(p.get("mag_gap_mm", 60.0)),
+            invert=str(p.get("invert", "auto")),
         )
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()

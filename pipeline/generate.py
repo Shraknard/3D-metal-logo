@@ -53,7 +53,7 @@ def generate(image, outdir, *, target_w=120.0, text_h=3.0, base_h=1.6,
              nozzle=0.4, thicken_mm=0.0, backing="offset", backing_offset_mm=1.5,
              work_px=1400, despeckle=0.01, rect_marg=5.0, threshold=-1,
              mirror=False, fmt="standard", magnet_n=2,
-             mag_h_mm=2.0, mag_gap_mm=60.0):
+             mag_h_mm=2.0, mag_gap_mm=60.0, invert="auto"):
     os.makedirs(outdir, exist_ok=True)
 
     # Format only sets DEFAULTS (done client-side / by callers); every dimension,
@@ -89,6 +89,7 @@ def generate(image, outdir, *, target_w=120.0, text_h=3.0, base_h=1.6,
            "--grow-px", f"{grow_px:.3f}", "--upscale", f"{upscale:.4f}",
            "--despeckle", str(despeckle), "--opttolerance", "0.6",
            "--turdsize", "4", "--threshold", str(int(threshold)),
+           "--invert", invert,
            "--debug-bmp", os.path.join(outdir, "binarized.png"),
            "--meta", os.path.join(outdir, "meta.json")]
     if mirror:
@@ -205,12 +206,16 @@ if __name__ == "__main__":
                     help="magnet thickness = back pocket depth, mm (magnet format)")
     ap.add_argument("--mag-gap", type=float, default=60.0,
                     help="|x| spacing of the side magnet pockets, mm (magnet format)")
+    ap.add_argument("--invert", choices=["auto", "yes", "no"], default="auto",
+                    help="ink polarity: auto | yes (dark=ink) | no (bright=ink, "
+                         "i.e. light logo on a dark background)")
     a = ap.parse_args()
     res = generate(a.image, a.outdir, target_w=a.target_w, nozzle=a.nozzle,
                    thicken_mm=a.thicken, backing=a.backing,
                    backing_offset_mm=a.backing_offset, work_px=a.work_px,
                    threshold=a.threshold, mirror=a.mirror, fmt=a.fmt,
-                   magnet_n=a.magnet_n, mag_h_mm=a.mag_thick, mag_gap_mm=a.mag_gap)
+                   magnet_n=a.magnet_n, mag_h_mm=a.mag_thick, mag_gap_mm=a.mag_gap,
+                   invert=a.invert)
     extra = f"  +handle {res['handle_stl']}" if res.get("handle_stl") else ""
     print(f"[ok] {res['stl']}  dims(mm) X={res['dims'][0]} Y={res['dims'][1]} "
           f"Z={res['dims'][2]}  {res['triangles']:,} tris  grow={res['grow_mm']}mm"
