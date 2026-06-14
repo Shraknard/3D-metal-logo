@@ -51,6 +51,24 @@
   <div class="sub">Bambu A1 · PLA · monochrome</div>
 
   <div class="grp">
+    <h2>Format</h2>
+    <select id="fmt">
+      <option value="standard" selected>Standard (logo seul)</option>
+      <option value="magnet">Aimant (poches au dos)</option>
+      <option value="stamp">Tampon (miroir + manche)</option>
+    </select>
+    <div id="magWrap" class="hidden">
+      <label>Nombre d'aimants</label>
+      <select id="magN">
+        <option value="2" selected>2 (côtés)</option>
+        <option value="4">4 (coins)</option>
+      </select>
+      <div class="sub" style="margin-top:4px">Aimants néodyme 8 × 3 mm, collés dans les poches. Fond auto-épaissi, dos plat.</div>
+    </div>
+    <div id="stampNote" class="sub hidden" style="margin-top:6px">Relief imprimé en miroir sur une plaque rigide, cavité au dos pour le manche (téléchargé à part). Assemblage en force (jeu ~0.2 mm).</div>
+  </div>
+
+  <div class="grp">
     <h2>Image source</h2>
     <input type="file" id="file" accept="image/*" />
     <div id="imgInfo" class="sub" style="margin:8px 0 0"></div>
@@ -87,11 +105,13 @@
     <label>Épaississement <span class="val" id="thickenV">0.0</span> mm</label>
     <div class="row"><input type="range" id="thicken" min="0" max="3" step="0.1" value="0"></div>
 
-    <label class="row" style="margin:10px 0 0; color:var(--mut)">
-      <input type="checkbox" id="mirror" style="width:auto;flex:none">
-      Inverser (mode tampon)
-    </label>
-    <div class="sub" style="margin-top:4px">Miroir horizontal : imprime à l'envers pour que l'empreinte tamponnée soit à l'endroit.</div>
+    <div id="mirrorWrap">
+      <label class="row" style="margin:10px 0 0; color:var(--mut)">
+        <input type="checkbox" id="mirror" style="width:auto;flex:none">
+        Inverser (miroir horizontal)
+      </label>
+      <div class="sub" style="margin-top:4px">Imprime à l'envers (le format Tampon l'active automatiquement).</div>
+    </div>
   </div>
 
   <div class="grp">
@@ -104,7 +124,7 @@
     <div class="row"><input type="range" id="bh" min="0.4" max="5" step="0.1" value="1.6"></div>
   </div>
 
-  <div class="grp">
+  <div class="grp" id="backingGrp">
     <h2>Fond / support</h2>
     <label>Type</label>
     <select id="backing">
@@ -140,6 +160,7 @@
     <div id="zLab"><b>–</b><small>Z mm</small></div>
   </div>
   <a id="dl" class="hidden" download="logo.stl"><button style="background:#2c313b;color:#fff;margin-top:8px">⬇ Télécharger le STL</button></a>
+  <a id="dlHandle" class="hidden" download="manche.stl"><button style="background:#2c313b;color:#fff;margin-top:8px">⬇ Télécharger le manche (STL)</button></a>
   <img id="thumb" alt="binarisé" />
 </div>
 
@@ -238,6 +259,18 @@ for (const [s,v] of Object.entries(sliders)) {
 function syncOffVis() { $('offWrap').style.display = $('backing').value==='offset' ? '' : 'none'; }
 $('backing').addEventListener('change', syncOffVis); syncOffVis();
 
+// Format drives which controls apply. magnet/stamp force a rect slab (the backing
+// group is hidden); stamp forces the mirror.
+function syncFmtVis() {
+  const f = $('fmt').value;
+  $('magWrap').classList.toggle('hidden', f!=='magnet');
+  $('stampNote').classList.toggle('hidden', f!=='stamp');
+  $('backingGrp').classList.toggle('hidden', f!=='standard');
+  $('mirrorWrap').classList.toggle('hidden', f!=='standard');
+  if (f==='stamp') $('mirror').checked = true;
+}
+$('fmt').addEventListener('change', syncFmtVis); syncFmtVis();
+
 // ---------- binarization threshold ----------
 // current cutoff sent to the backend: -1 == auto (Otsu)
 function curThreshold() { return $('thrAuto').checked ? -1 : +$('thr').value; }
@@ -297,6 +330,7 @@ $('gen').addEventListener('click', async () => {
     backing:$('backing').value, backing_offset_mm:+$('off').value,
     work_px:+$('detail').value, threshold:curThreshold(),
     mirror:$('mirror').checked,
+    fmt:$('fmt').value, magnet_n:+$('magN').value,
   };
   try {
     const r = await fetch('/generate', { method:'POST',
@@ -307,6 +341,9 @@ $('gen').addEventListener('click', async () => {
       showMesh(geom);
       $('dims').classList.remove('hidden');
       const dl = $('dl'); dl.href = j.stl_url; dl.classList.remove('hidden');
+      const dlH = $('dlHandle');
+      if (j.handle_url) { dlH.href = j.handle_url; dlH.classList.remove('hidden'); }
+      else dlH.classList.add('hidden');
       const th = $('thumb'); th.src = j.binarized_url; th.style.display='block';
       const dt = ((performance.now()-t0)/1000).toFixed(1);
       $('status').innerHTML =

@@ -1,17 +1,25 @@
-// Parametric: exports ONE part per run (relief OR backing) — no boolean union,
-// so STL export stays fast. generate.py runs this twice and concatenates the
-// two STLs; the overlapping volumes are unioned by the slicer at print time.
+// Parametric: exports ONE part per run (relief OR backing OR handle) — no boolean
+// union between dense meshes, so STL export stays fast. generate.py runs this
+// twice (relief + backing) and concatenates the STLs; the overlapping volumes are
+// unioned by the slicer at print time. The handle (stamp mode) is a third,
+// independent run.
 //
-// Both SVGs share one canvas, imported center=false into the SAME frame, then
+// Both logo SVGs share one canvas, imported center=false into the SAME frame, then
 // translated by the RELIEF content centre and scaled so content width == target_w.
 // import() returns mm directly (1 SVG unit -> k mm).
+//
+// `holes` are cylindrical pockets bored from the BACK (z=0) of the backing — used
+// for magnet pockets (magnet mode) and the handle socket (stamp mode). They are
+// only ever placed in regions with no relief above them (margins / lifted relief),
+// so the concatenated relief does not refill them.
 
 file        = "";    // relief SVG (absolute path)
 backing_file = "";   // backing SVG (absolute path)
 target_w    = 120;   // final relief width, mm
 text_h      = 3.0;   // relief height, mm
 base_h      = 1.6;   // backing thickness, mm
-part        = 0;     // 0 relief | 1 backing offset (file) | 2 backing hull | 3 rectangle
+relief_z    = 0;     // relief Z offset, mm (stamp mode lifts it onto the slab face)
+part        = 0;     // 0 relief | 1 backing offset (file) | 2 backing hull | 3 rectangle | 4 handle
 
 k           = 0.352778;  // mm per SVG unit
 cx          = 0;         // relief content centre x (SVG units)
@@ -19,6 +27,12 @@ cy          = 0;         // relief content centre y (SVG units)
 content_w   = 1;         // relief content width  (SVG units)
 content_h   = 1;         // relief content height (SVG units)
 rect_marg   = 5;         // rectangle plaque margin, mm
+holes       = [];        // list of [x, y, d, depth] pockets bored from z=0
+// handle (part==4) — independent of the logo, sized to the socket
+knob_d      = 25;        // grip diameter, mm
+knob_h      = 18;        // grip height, mm
+peg_d       = 7.8;       // peg diameter (socket_d - clearance), mm
+peg_h       = 4.5;       // peg length, mm
 $fn         = 6;
 
 s = target_w / (content_w * k);
@@ -28,13 +42,33 @@ module placed(f)
         translate([-cx * k, -cy * k, 0])
             import(f, center = false);
 
+// Subtract every hole (bored from z=0 up) from the child solid.
+module with_holes() {
+    if (len(holes) == 0)
+        children();
+    else
+        difference() {
+            children();
+            for (hpk = holes)
+                translate([hpk[0], hpk[1], -0.01])
+                    cylinder(d = hpk[2], h = hpk[3] + 0.01, $fn = 48);
+        }
+}
+
 if (part == 0)
-    linear_extrude(height = text_h) placed(file);
+    translate([0, 0, relief_z])
+        linear_extrude(height = text_h) placed(file);
 else if (part == 1)
-    linear_extrude(height = base_h) placed(backing_file);
+    with_holes() linear_extrude(height = base_h) placed(backing_file);
 else if (part == 2)
-    linear_extrude(height = base_h) hull() placed(file);
+    with_holes() linear_extrude(height = base_h) hull() placed(file);
 else if (part == 3)
-    linear_extrude(height = base_h)
+    with_holes() linear_extrude(height = base_h)
         square([target_w + 2 * rect_marg,
                 content_h * k * s + 2 * rect_marg], center = true);
+else if (part == 4) {
+    // grip with the peg on top: prints base-down, peg up, no support
+    cylinder(d = knob_d, h = knob_h, $fn = 64);
+    translate([0, 0, knob_h])
+        cylinder(d = peg_d, h = peg_h, $fn = 48);
+}

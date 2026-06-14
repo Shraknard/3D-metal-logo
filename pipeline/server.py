@@ -112,15 +112,19 @@ def do_generate():
             work_px=int(p.get("work_px", 1400)),
             threshold=int(p.get("threshold", -1)),
             mirror=bool(p.get("mirror", False)),
+            fmt=str(p.get("fmt", "standard")),
+            magnet_n=int(p.get("magnet_n", 2)),
         )
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()
         return jsonify(ok=False, error=str(e)), 500
 
     t = int(time.time() * 1000)
+    handle_url = f"/out/handle.stl?t={t}" if res.get("handle_stl") else None
     return jsonify(ok=True,
                    stl_url=f"/out/logo.stl?t={t}",
                    binarized_url=f"/out/binarized.png?t={t}",
+                   handle_url=handle_url, fmt=res["fmt"],
                    dims=res["dims"], triangles=res["triangles"],
                    grow_mm=res["grow_mm"], backing=res["backing"],
                    otsu=res["meta"].get("otsu"),

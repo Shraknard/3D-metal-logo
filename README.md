@@ -84,6 +84,7 @@ Puis ouvrir **http://127.0.0.1:5000**.
 
 | Paramètre              | Effet |
 |------------------------|-------|
+| **Format**             | `standard` (logo seul) · `aimant` (poches au dos) · `tampon` (miroir + manche). Voir [Formats](#-formats) |
 | **Seuil de binarisation** | coche *Auto (Otsu)* ou règle manuellement le seuil 1–254. Aperçu live. Seuil haut → récupère les traits clairs/antialiasés ; seuil bas → trait plus net |
 | **Buse**               | garantit un trait min ≈ 1 buse (anti traits-fins non imprimables) |
 | **Épaississement**     | gras supplémentaire des traits (mm) |
@@ -96,6 +97,24 @@ Puis ouvrir **http://127.0.0.1:5000**.
 
 ---
 
+## 🎛️ Formats
+
+Trois formats au choix dans le panneau **Format** (le fond est alors imposé en
+plaque rectangle pour les deux derniers) :
+
+| Format | Description |
+|--------|-------------|
+| **Standard** | le logo en relief sur un fond optionnel — dos plat. Comportement historique. |
+| **Aimant** | poches cylindriques au **dos** pour y coller des aimants néodyme **8 × 3 mm** (standard impression 3D). Le fond est auto-épaissi (≈ 4 mm) pour loger l'aimant sous une paroi de 0.8 mm qui le cache. **2** poches (côtés) ou **4** (coins), placées dans les marges, hors du logo. |
+| **Tampon** | le relief est imprimé **en miroir** sur une plaque rigide. Une **cavité** au dos reçoit un **manche** (bouton) imprimé **à part** — assemblage en force (jeu ~0.2 mm, colle optionnelle). Le bouton (`manche.stl` / `handle.stl`) se télécharge séparément. |
+
+**Assemblage du tampon** : cavité Ø 8 mm / profondeur 5 mm dans la plaque ; le
+manche a un tenon Ø 7.8 mm assorti. Imprimer le manche **base-bouton sur le
+plateau, tenon vers le haut** (aucun support). Enfoncer le tenon dans la cavité ;
+ajouter une goutte de colle pour rendre l'assemblage permanent.
+
+---
+
 ## ⌨️ Utilisation en ligne de commande
 
 ```bash
@@ -105,6 +124,12 @@ Puis ouvrir **http://127.0.0.1:5000**.
 
 # Forcer un seuil de binarisation manuel (0–255 ; défaut -1 = Otsu auto)
 ./.venv/bin/python pipeline/generate.py mon_logo.png --threshold 200
+
+# Format aimant avec 4 poches au dos
+./.venv/bin/python pipeline/generate.py mon_logo.png --format magnet --magnet-n 4
+
+# Format tampon (miroir + cavité) → écrit aussi handle.stl à côté du logo
+./.venv/bin/python pipeline/generate.py mon_logo.png --format stamp
 
 # Comparer toutes les variantes de fond (out/compare/<variante>/)
 ./.venv/bin/python pipeline/build.py mon_logo.png
@@ -120,7 +145,7 @@ Puis ouvrir **http://127.0.0.1:5000**.
 | Fichier            | Rôle |
 |--------------------|------|
 | `logo2stl.py`      | image → SVG(s). Binarisation (Otsu auto ou seuil `--threshold` manuel), dilatation par **transformée de distance** (rapide), tracé potrace. Émet le relief + un fond plus large sur le même canvas (pour rester alignés). |
-| `logo.scad`        | extrude **une** pièce par appel (relief / fond offset / hull / rectangle). Pas de booléen → export quasi instantané. |
+| `logo.scad`        | extrude **une** pièce par appel (relief / fond offset / hull / rectangle / manche). Pas de booléen entre maillages denses → export quasi instantané ; les poches aimant et la cavité tampon sont de simples cylindres soustraits du fond (`difference()` peu coûteux). |
 | `merge_stl.py`     | concatène relief + fond en un STL. Les volumes se chevauchent : le slicer les fusionne (pas de fusion CGAL coûteuse). |
 | `generate.py`      | orchestre : paramètres → pixels → potrace → OpenSCAD → fusion → cotes. |
 | `server.py`        | serveur Flask local + API `/upload` `/preview` (binarisation seule, rapide) `/generate`. |
@@ -156,6 +181,12 @@ out/                   # sorties générées (non versionné)
 STL monochrome, dos plat (se pose directement sur le plateau). Pour les logos très
 fragmentés, privilégier un fond `hull`/`rectangle` ou un `offset` assez large pour
 que tout tienne en une seule pièce. PLA, buse 0.4 mm, pas de support nécessaire.
+
+**Format aimant** : imprimer **dos sur le plateau** (poches vers le bas). Le toit
+de chaque poche est un court **pont** (~8 mm) que le PLA franchit sans support.
+Coller les aimants une fois la pièce refroidie. **Format tampon** : le logo
+s'imprime relief vers le haut, cavité vers le bas ; imprimer le **manche à part**
+(tenon vers le haut).
 
 ### Réglages Bambu Studio (A1)
 
