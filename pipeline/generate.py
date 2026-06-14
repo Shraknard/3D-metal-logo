@@ -31,13 +31,14 @@ BACKINGS = ("none", "offset", "hull", "rect")  # rect/hull connect everything
 FORMATS = ("standard", "magnet", "stamp")
 
 # --- magnet format (neodymium disc, glued into back pockets) ---
-MAG_D, MAG_H = 8.0, 3.0      # standard hobby magnet
+# Magnet thickness (pocket depth) and spacing are user params now; these are the
+# fixed bits of geometry that don't change between logos.
+MAG_D = 8.0                  # standard hobby magnet diameter (Ø)
 HOLE_CLR = 0.2               # radial/depth clearance for pockets AND the socket
-MAG_FLOOR = 0.8              # wall left above the pocket, hides the magnet
-MAG_EDGE = 2.5               # pocket edge -> plate edge gap
+MAG_FLOOR = 0.4              # min wall left above the pocket, hides the magnet
+MAG_EDGE = 2.5               # pocket edge -> plate edge gap (rect backing only)
 # --- stamp format (mirrored relief + handle socket) ---
 SOCKET_D, SOCKET_DEPTH = 8.0, 5.0
-PEG_LEN = SOCKET_DEPTH - 0.5  # peg stops short of the socket floor
 KNOB_D, KNOB_H = 25.0, 18.0   # separate handle grip
 
 
@@ -51,22 +52,26 @@ def _openscad(stl, defs):
 def generate(image, outdir, *, target_w=120.0, text_h=3.0, base_h=1.6,
              nozzle=0.4, thicken_mm=0.0, backing="offset", backing_offset_mm=1.5,
              work_px=1400, despeckle=0.01, rect_marg=5.0, threshold=-1,
-             mirror=False, fmt="standard", magnet_n=2):
+             mirror=False, fmt="standard", magnet_n=2,
+             mag_h_mm=2.0, mag_gap_mm=60.0):
     os.makedirs(outdir, exist_ok=True)
 
-    # Format presets override a few params before anything else. Both magnet and
-    # stamp need a solid rectangular slab; the holes are computed later (they
-    # depend on the traced content size, only known after logo2stl runs).
+    # Format only sets DEFAULTS (done client-side / by callers); every dimension,
+    # backing type and mirror flag stays user-controlled. Here we just apply the
+    # geometric constraints each format physically needs. The holes are computed
+    # later (they depend on the traced content size, known after logo2stl runs).
     relief_z = 0.0
     if fmt == "magnet":
-        backing = "rect"
-        base_h = max(base_h, MAG_H + HOLE_CLR + MAG_FLOOR)
-        rect_marg = max(rect_marg, MAG_D + 2 * MAG_EDGE)
+        # Base must be deep enough to bury the magnet pocket (+ a thin floor). The
+        # relief stays at z=0 like standard mode and pokes through the front; the
+        # magnet pockets are bored from the back in the relief-free side margins.
+        base_h = max(base_h, mag_h_mm + HOLE_CLR + MAG_FLOOR)
+        if backing == "rect":
+            rect_marg = max(rect_marg, MAG_D + 2 * MAG_EDGE)
     elif fmt == "stamp":
-        backing = "rect"
-        mirror = True
-        base_h = max(base_h, SOCKET_DEPTH + 1.0)
-        relief_z = base_h - 0.2  # relief sits on the slab face; 0.2mm weld overlap
+        # Relief lifted onto the slab front face (0.2mm weld overlap) so the whole
+        # back stays solid for the handle socket bored into it.
+        relief_z = base_h - 0.2
 
     src_w, _ = Image.open(image).size
     mm_per_px = target_w / src_w
@@ -111,10 +116,12 @@ def generate(image, outdir, *, target_w=120.0, text_h=3.0, base_h=1.6,
     # magnet pockets live in the side margins (|x| > target_w/2); the stamp socket
     # is central but safe because stamp mode lifts the relief onto the slab face.
     holes = []
+    socket_x = []  # stamp: x of each socket, reused to place the matching pegs
+    socket_depth = SOCKET_DEPTH
     content_h_mm = (meta["content_h_px"] / meta["content_w_px"]) * target_w
     if fmt == "magnet":
-        d, depth = MAG_D + HOLE_CLR, MAG_H + HOLE_CLR
-        xc = target_w / 2.0 + rect_marg / 2.0  # centre of the side margin band
+        d, depth = MAG_D + HOLE_CLR, mag_h_mm + HOLE_CLR
+        xc = mag_gap_mm  # |x| of the side pockets (user-tunable spacing)
         if magnet_n >= 4:
             yo = content_h_mm * 0.3
             holes = [[-xc, -yo, d, depth], [-xc, yo, d, depth],
@@ -122,7 +129,14 @@ def generate(image, outdir, *, target_w=120.0, text_h=3.0, base_h=1.6,
         else:
             holes = [[-xc, 0.0, d, depth], [xc, 0.0, d, depth]]
     elif fmt == "stamp":
-        holes = [[0.0, 0.0, SOCKET_D + HOLE_CLR, SOCKET_DEPTH]]
+        # Three sockets spread along the back (x axis) for a steadier, non-pivoting
+        # grip; spacing scales with the logo so they stay within the slab. Depth is
+        # capped to the base thickness so a thin slab can't be bored through.
+        sp = target_w * 0.28
+        socket_x = [-sp, 0.0, sp]
+        socket_depth = min(SOCKET_DEPTH, max(1.0, base_h - 0.8))
+        d, depth = SOCKET_D + HOLE_CLR, socket_depth
+        holes = [[x, 0.0, d, depth] for x in socket_x]
     holes_scad = "[" + ",".join(
         "[%g,%g,%g,%g]" % tuple(h) for h in holes) + "]"
 
@@ -154,10 +168,11 @@ def generate(image, outdir, *, target_w=120.0, text_h=3.0, base_h=1.6,
     handle_stl = None
     if fmt == "stamp":
         handle_stl = os.path.join(outdir, "handle.stl")
+        pegs_scad = "[" + ",".join("[%g,0]" % x for x in socket_x) + "]"
         _openscad(handle_stl, [
             "-D", f"knob_d={KNOB_D}", "-D", f"knob_h={KNOB_H}",
-            "-D", f"peg_d={SOCKET_D - HOLE_CLR}", "-D", f"peg_h={PEG_LEN}",
-            "-D", "part=4"])
+            "-D", f"peg_d={SOCKET_D - HOLE_CLR}", "-D", f"peg_h={socket_depth - 0.5}",
+            "-D", f"pegs={pegs_scad}", "-D", "part=4"])
 
     lo, hi = stl_bbox.stl_bbox(stl)
     dims = [round(hi[i] - lo[i], 2) for i in range(3)]
@@ -186,12 +201,16 @@ if __name__ == "__main__":
                     help="standard | magnet (back pockets) | stamp (mirror+socket)")
     ap.add_argument("--magnet-n", type=int, default=2, choices=(2, 4),
                     help="number of magnet pockets (magnet format)")
+    ap.add_argument("--mag-thick", type=float, default=2.0,
+                    help="magnet thickness = back pocket depth, mm (magnet format)")
+    ap.add_argument("--mag-gap", type=float, default=60.0,
+                    help="|x| spacing of the side magnet pockets, mm (magnet format)")
     a = ap.parse_args()
     res = generate(a.image, a.outdir, target_w=a.target_w, nozzle=a.nozzle,
                    thicken_mm=a.thicken, backing=a.backing,
                    backing_offset_mm=a.backing_offset, work_px=a.work_px,
                    threshold=a.threshold, mirror=a.mirror, fmt=a.fmt,
-                   magnet_n=a.magnet_n)
+                   magnet_n=a.magnet_n, mag_h_mm=a.mag_thick, mag_gap_mm=a.mag_gap)
     extra = f"  +handle {res['handle_stl']}" if res.get("handle_stl") else ""
     print(f"[ok] {res['stl']}  dims(mm) X={res['dims'][0]} Y={res['dims'][1]} "
           f"Z={res['dims'][2]}  {res['triangles']:,} tris  grow={res['grow_mm']}mm"

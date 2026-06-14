@@ -10,8 +10,14 @@
   * { box-sizing:border-box; }
   body { margin:0; height:100vh; display:flex; font:14px/1.4 system-ui,sans-serif;
          background:var(--bg); color:var(--txt); }
-  #panel { width:320px; flex:none; background:var(--panel);
-           border-right:1px solid var(--line); padding:16px; overflow-y:auto; }
+  #panel { width:624px; flex:none; background:var(--panel);
+           border-right:1px solid var(--line); padding:16px; overflow-y:auto;
+           display:flex; flex-direction:column; }
+  body.collapsed #panel { display:none; }
+  /* groups flow into 2 balanced columns so nothing needs scrolling; the columns
+     keep the SAME control width as before — the panel is only wider, not the rows. */
+  #groups { column-count:2; column-gap:14px; }
+  #groups > .grp { break-inside:avoid; }
   h1 { font-size:15px; margin:0 0 4px; letter-spacing:.5px; }
   .sub { color:var(--mut); font-size:12px; margin-bottom:14px; }
   .grp { border:1px solid var(--line); border-radius:8px; padding:10px 12px;
@@ -37,11 +43,26 @@
   #dims b { display:block; font-size:15px; }
   #dims small { color:var(--mut); }
   #xLab b{color:#ff6b6b} #yLab b{color:#5bd75b} #zLab b{color:#6ab0ff}
-  #thumb { width:100%; margin-top:8px; border:1px solid var(--line);
-           border-radius:6px; background:#000; display:none; }
-  #view { flex:1; position:relative; }
+  #view { flex:1; position:relative; min-width:0; }
   #hint { position:absolute; left:12px; bottom:10px; color:var(--mut);
           font-size:11px; pointer-events:none; }
+  /* enlarged previews docked beside the panel, top-left of the 3D view */
+  #previews { position:absolute; left:12px; top:12px; z-index:4;
+              width:clamp(260px, 24vw, 420px); display:flex; flex-direction:column;
+              gap:10px; pointer-events:none; }
+  .pv { background:#0d0f13ee; border:1px solid var(--line); border-radius:8px;
+        padding:8px; backdrop-filter:blur(2px); }
+  .pv .pvLab { font-size:10px; text-transform:uppercase; letter-spacing:.8px;
+               color:var(--mut); margin-bottom:6px; }
+  .pv img { width:100%; display:block; border-radius:4px; background:#fff; }
+  #thumb { background:#000; }
+  /* collapse tab on the left edge of the view (panel's right edge) */
+  #collapse { position:absolute; left:0; top:50%; transform:translateY(-50%);
+              width:20px; height:64px; padding:0; z-index:6; cursor:pointer;
+              background:var(--line); color:var(--txt); font-size:12px;
+              border:1px solid var(--line); border-left:0;
+              border-radius:0 8px 8px 0; }
+  #collapse:hover { background:#39404c; }
   .hidden { display:none; }
 </style>
 </head>
@@ -50,6 +71,7 @@
   <h1>METAL LOGO → STL</h1>
   <div class="sub">Bambu A1 · PLA · monochrome</div>
 
+  <div id="groups">
   <div class="grp">
     <h2>Format</h2>
     <select id="fmt">
@@ -57,15 +79,8 @@
       <option value="magnet">Aimant (poches au dos)</option>
       <option value="stamp">Tampon (miroir + manche)</option>
     </select>
-    <div id="magWrap" class="hidden">
-      <label>Nombre d'aimants</label>
-      <select id="magN">
-        <option value="2" selected>2 (côtés)</option>
-        <option value="4">4 (coins)</option>
-      </select>
-      <div class="sub" style="margin-top:4px">Aimants néodyme 8 × 3 mm, collés dans les poches. Fond auto-épaissi, dos plat.</div>
-    </div>
-    <div id="stampNote" class="sub hidden" style="margin-top:6px">Relief imprimé en miroir sur une plaque rigide, cavité au dos pour le manche (téléchargé à part). Assemblage en force (jeu ~0.2 mm).</div>
+    <div id="fmtNote" class="sub" style="margin-top:6px"></div>
+    <div class="sub" style="margin-top:4px">Le format ne fait que pré-régler les valeurs par défaut. Tous les paramètres ci-dessous restent réglables dans tous les formats.</div>
   </div>
 
   <div class="grp">
@@ -83,9 +98,7 @@
         <input type="checkbox" id="thrAuto" checked style="width:auto;flex:none">
         Auto (Otsu)
       </label>
-      <div class="sub" style="margin-top:4px">Monte le seuil pour récupérer les traits fins/clairs ; descends-le pour affiner.</div>
-      <img id="preview" alt="aperçu binarisé"
-           style="width:100%;margin-top:8px;border:1px solid var(--line);border-radius:6px;background:#fff;display:none" />
+      <div class="sub" style="margin-top:4px">Monte le seuil pour récupérer les traits fins/clairs ; descends-le pour affiner. Aperçu à droite.</div>
     </div>
   </div>
 
@@ -105,13 +118,11 @@
     <label>Épaississement <span class="val" id="thickenV">0.0</span> mm</label>
     <div class="row"><input type="range" id="thicken" min="0" max="3" step="0.1" value="0"></div>
 
-    <div id="mirrorWrap">
-      <label class="row" style="margin:10px 0 0; color:var(--mut)">
-        <input type="checkbox" id="mirror" style="width:auto;flex:none">
-        Inverser (miroir horizontal)
-      </label>
-      <div class="sub" style="margin-top:4px">Imprime à l'envers (le format Tampon l'active automatiquement).</div>
-    </div>
+    <label class="row" style="margin:10px 0 0; color:var(--mut)">
+      <input type="checkbox" id="mirror" style="width:auto;flex:none">
+      Inverser (miroir horizontal)
+    </label>
+    <div class="sub" style="margin-top:4px">Imprime à l'envers (activé par défaut en mode Tampon).</div>
   </div>
 
   <div class="grp">
@@ -141,6 +152,20 @@
   </div>
 
   <div class="grp">
+    <h2>Aimants (poches au dos)</h2>
+    <label>Nombre d'aimants</label>
+    <select id="magN">
+      <option value="2" selected>2 (côtés)</option>
+      <option value="4">4 (coins)</option>
+    </select>
+    <label>Épaisseur des aimants <span class="val" id="magThickV">2.0</span> mm</label>
+    <div class="row"><input type="range" id="magThick" min="1" max="6" step="0.5" value="2"></div>
+    <label>Écartement des aimants ±<span class="val" id="magGapV">60</span> mm</label>
+    <div class="row"><input type="range" id="magGap" min="10" max="150" step="1" value="60"></div>
+    <div class="sub" style="margin-top:4px">Aimants néodyme Ø8 mm collés dans les poches au dos. Distance entre l'axe des poches et le centre. N'a d'effet qu'en format Aimant.</div>
+  </div>
+
+  <div class="grp">
     <h2>Qualité / poids</h2>
     <label>Détail (résolution de tracé)</label>
     <select id="detail">
@@ -151,6 +176,7 @@
     </select>
     <div class="sub" style="margin-top:4px">Plafonne les triangles. Au-delà de ~1400 px, aucun gain visible à l'impression.</div>
   </div>
+  </div><!-- /#groups -->
 
   <button id="gen" disabled>Valider & générer</button>
   <div id="status">Charge une image pour commencer.</div>
@@ -161,10 +187,20 @@
   </div>
   <a id="dl" class="hidden" download="logo.stl"><button style="background:#2c313b;color:#fff;margin-top:8px">⬇ Télécharger le STL</button></a>
   <a id="dlHandle" class="hidden" download="manche.stl"><button style="background:#2c313b;color:#fff;margin-top:8px">⬇ Télécharger le manche (STL)</button></a>
-  <img id="thumb" alt="binarisé" />
 </div>
 
 <div id="view">
+  <button id="collapse" title="Replier / déplier le panneau">◀</button>
+  <div id="previews">
+    <div class="pv hidden" id="pvPreview">
+      <div class="pvLab">Aperçu binarisation</div>
+      <img id="preview" alt="aperçu binarisé" />
+    </div>
+    <div class="pv hidden" id="pvThumb">
+      <div class="pvLab">Logo généré (binarisé)</div>
+      <img id="thumb" alt="binarisé" />
+    </div>
+  </div>
   <div id="hint">clic-glisser : tourner · molette : zoom · clic droit : déplacer</div>
 </div>
 
@@ -201,6 +237,13 @@ function resize() {
   renderer.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
+
+// collapse / expand the whole side panel (the 3D view + previews reclaim the space)
+document.getElementById('collapse').addEventListener('click', e => {
+  const collapsed = document.body.classList.toggle('collapsed');
+  e.currentTarget.textContent = collapsed ? '▶' : '◀';
+  resize();
+});
 
 function makeLabel(text, color) {
   const c = document.createElement('canvas'); c.width=256; c.height=64;
@@ -251,25 +294,37 @@ function showMesh(geom) {
 
 // ---------- UI wiring ----------
 const $ = id => document.getElementById(id);
-const sliders = { thicken:'thickenV', tw:'twV', th:'thV', bh:'bhV', off:'offV' };
+const sliders = { thicken:'thickenV', tw:'twV', th:'thV', bh:'bhV', off:'offV',
+                  magThick:'magThickV', magGap:'magGapV' };
+const intSliders = new Set(['tw', 'magGap']);
 for (const [s,v] of Object.entries(sliders)) {
-  const upd = () => $(v).textContent = (+$(s).value).toFixed(s==='tw'?0:1);
+  const upd = () => $(v).textContent = (+$(s).value).toFixed(intSliders.has(s)?0:1);
   $(s).addEventListener('input', upd); upd();
 }
 function syncOffVis() { $('offWrap').style.display = $('backing').value==='offset' ? '' : 'none'; }
 $('backing').addEventListener('change', syncOffVis); syncOffVis();
 
-// Format drives which controls apply. magnet/stamp force a rect slab (the backing
-// group is hidden); stamp forces the mirror.
-function syncFmtVis() {
-  const f = $('fmt').value;
-  $('magWrap').classList.toggle('hidden', f!=='magnet');
-  $('stampNote').classList.toggle('hidden', f!=='stamp');
-  $('backingGrp').classList.toggle('hidden', f!=='standard');
-  $('mirrorWrap').classList.toggle('hidden', f!=='standard');
-  if (f==='stamp') $('mirror').checked = true;
+// The format ONLY pre-fills sensible defaults — every control stays editable in
+// every format. Switching format re-applies that format's defaults.
+const FMT_DEFAULTS = {
+  standard: { th:3.0, bh:1.6, backing:'offset', mirror:false,
+    note:'Logo seul. Le fond suit le type choisi ci-dessous.' },
+  magnet:   { th:3.0, bh:2.7, backing:'offset', mirror:false,
+    note:'Poches à aimants percées au dos (groupe « Aimants »). Le relief traverse la face avant comme en standard. Augmente la marge du fond ou passe en Rectangle si les poches débordent.' },
+  stamp:    { th:3.5, bh:4.0, backing:'rect', mirror:true,
+    note:'Relief en miroir sur une plaque rigide, cavité au dos pour le manche (téléchargé à part). Assemblage en force (jeu ~0.2 mm).' },
+};
+function applyFmtDefaults() {
+  const d = FMT_DEFAULTS[$('fmt').value];
+  $('th').value = d.th; $('bh').value = d.bh;
+  $('backing').value = d.backing; $('mirror').checked = d.mirror;
+  if ($('fmt').value === 'magnet')
+    $('magGap').value = Math.round(+$('tw').value/2 + 4);  // just outside the logo
+  $('fmtNote').textContent = d.note;
+  ['th','bh','magGap'].forEach(s => $(s).dispatchEvent(new Event('input')));
+  syncOffVis();
 }
-$('fmt').addEventListener('change', syncFmtVis); syncFmtVis();
+$('fmt').addEventListener('change', applyFmtDefaults); applyFmtDefaults();
 
 // ---------- binarization threshold ----------
 // current cutoff sent to the backend: -1 == auto (Otsu)
@@ -285,7 +340,7 @@ async function refreshPreview() {
     const j = await r.json();
     if (!j.ok) { $('status').textContent = 'Erreur: '+j.error; return; }
     if (!seeded && j.otsu != null) { $('thr').value = j.otsu; seeded = true; }
-    const pv = $('preview'); pv.src = j.preview_url; pv.style.display = 'block';
+    $('preview').src = j.preview_url; $('pvPreview').classList.remove('hidden');
   } catch (err) { $('status').textContent = 'Erreur aperçu: '+err; }
 }
 let previewTimer = null;
@@ -331,6 +386,7 @@ $('gen').addEventListener('click', async () => {
     work_px:+$('detail').value, threshold:curThreshold(),
     mirror:$('mirror').checked,
     fmt:$('fmt').value, magnet_n:+$('magN').value,
+    mag_h_mm:+$('magThick').value, mag_gap_mm:+$('magGap').value,
   };
   try {
     const r = await fetch('/generate', { method:'POST',
@@ -344,7 +400,7 @@ $('gen').addEventListener('click', async () => {
       const dlH = $('dlHandle');
       if (j.handle_url) { dlH.href = j.handle_url; dlH.classList.remove('hidden'); }
       else dlH.classList.add('hidden');
-      const th = $('thumb'); th.src = j.binarized_url; th.style.display='block';
+      $('thumb').src = j.binarized_url; $('pvThumb').classList.remove('hidden');
       const dt = ((performance.now()-t0)/1000).toFixed(1);
       $('status').innerHTML =
         `OK en ${dt}s · ${j.triangles.toLocaleString()} triangles · ` +

@@ -33,6 +33,7 @@ knob_d      = 25;        // grip diameter, mm
 knob_h      = 18;        // grip height, mm
 peg_d       = 7.8;       // peg diameter (socket_d - clearance), mm
 peg_h       = 4.5;       // peg length, mm
+pegs        = [[0, 0]];  // [x,y] of each peg, matching the socket holes
 $fn         = 6;
 
 s = target_w / (content_w * k);
@@ -67,8 +68,14 @@ else if (part == 3)
         square([target_w + 2 * rect_marg,
                 content_h * k * s + 2 * rect_marg], center = true);
 else if (part == 4) {
-    // grip with the peg on top: prints base-down, peg up, no support
-    cylinder(d = knob_d, h = knob_h, $fn = 64);
-    translate([0, 0, knob_h])
-        cylinder(d = peg_d, h = peg_h, $fn = 48);
+    // Multi-peg grip: an oblong grip (hull of knobs over every peg position)
+    // with a peg on top of each. Prints base-down, pegs up, no support. A single
+    // peg collapses the hull back to the original round knob.
+    hull()
+        for (p = pegs)
+            translate([p[0], p[1], 0])
+                cylinder(d = knob_d, h = knob_h, $fn = 64);
+    for (p = pegs)
+        translate([p[0], p[1], knob_h])
+            cylinder(d = peg_d, h = peg_h, $fn = 48);
 }

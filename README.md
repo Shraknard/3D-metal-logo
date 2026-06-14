@@ -93,25 +93,31 @@ Puis ouvrir **http://127.0.0.1:5000**.
 | **Épaisseur du fond**  | épaisseur de la plaque de support (mm) |
 | **Fond**               | `aucun` · `offset` (marge réglable) · `hull` · `rectangle` |
 | **Marge de l'offset**  | augmente jusqu'à ce que les éléments détachés se rejoignent |
+| **Nombre d'aimants**   | 2 (côtés) ou 4 (coins) — format Aimant |
+| **Épaisseur des aimants** | profondeur des poches au dos (mm) = épaisseur de l'aimant — format Aimant |
+| **Écartement des aimants** | distance ±x de l'axe des poches au centre (mm) — format Aimant |
 | **Détail**             | résolution de tracé → contrôle le poids du STL |
 
 ---
 
 ## 🎛️ Formats
 
-Trois formats au choix dans le panneau **Format** (le fond est alors imposé en
-plaque rectangle pour les deux derniers) :
+Trois formats au choix dans le panneau **Format**. Le format ne fait que
+**pré-régler les valeurs par défaut** — tous les paramètres (fond, miroir,
+dimensions, aimants…) restent réglables dans chaque format.
 
 | Format | Description |
 |--------|-------------|
 | **Standard** | le logo en relief sur un fond optionnel — dos plat. Comportement historique. |
-| **Aimant** | poches cylindriques au **dos** pour y coller des aimants néodyme **8 × 3 mm** (standard impression 3D). Le fond est auto-épaissi (≈ 4 mm) pour loger l'aimant sous une paroi de 0.8 mm qui le cache. **2** poches (côtés) ou **4** (coins), placées dans les marges, hors du logo. |
-| **Tampon** | le relief est imprimé **en miroir** sur une plaque rigide. Une **cavité** au dos reçoit un **manche** (bouton) imprimé **à part** — assemblage en force (jeu ~0.2 mm, colle optionnelle). Le bouton (`manche.stl` / `handle.stl`) se télécharge séparément. |
+| **Aimant** | poches cylindriques au **dos** pour y coller des aimants néodyme Ø 8 mm. Le fond est juste assez épais pour loger l'aimant sous une fine paroi (**épaisseur d'aimant réglable, 2 mm par défaut** ; fond ≈ 2.7 mm par défaut). Le relief traverse la **face avant** comme en standard. **2** poches (côtés) ou **4** (coins), à un **écartement réglable**, hors du logo. Fond `offset` par défaut (modifiable). |
+| **Tampon** | le relief est imprimé **en miroir** sur une plaque rigide (relief 3.5 mm, fond 4 mm par défaut). **Trois cavités** alignées au dos reçoivent un **manche** imprimé **à part** — assemblage en force (jeu ~0.2 mm, colle optionnelle). Le manche (`manche.stl` / `handle.stl`) se télécharge séparément. |
 
-**Assemblage du tampon** : cavité Ø 8 mm / profondeur 5 mm dans la plaque ; le
-manche a un tenon Ø 7.8 mm assorti. Imprimer le manche **base-bouton sur le
-plateau, tenon vers le haut** (aucun support). Enfoncer le tenon dans la cavité ;
-ajouter une goutte de colle pour rendre l'assemblage permanent.
+**Assemblage du tampon** : 3 cavités Ø 8 mm alignées au dos de la plaque (les 3
+points évitent que le tampon pivote), profondeur ≤ 5 mm **adaptée à l'épaisseur du
+fond** ; le manche est une poignée oblongue portant 3 tenons Ø 7.8 mm assortis.
+Imprimer le manche **poignée sur le plateau, tenons vers le haut** (aucun support).
+Enfoncer les tenons dans les cavités ; ajouter une goutte de colle pour rendre
+l'assemblage permanent.
 
 ---
 
@@ -125,8 +131,9 @@ ajouter une goutte de colle pour rendre l'assemblage permanent.
 # Forcer un seuil de binarisation manuel (0–255 ; défaut -1 = Otsu auto)
 ./.venv/bin/python pipeline/generate.py mon_logo.png --threshold 200
 
-# Format aimant avec 4 poches au dos
-./.venv/bin/python pipeline/generate.py mon_logo.png --format magnet --magnet-n 4
+# Format aimant : 4 poches, aimants de 2 mm, écartées de ±55 mm du centre
+./.venv/bin/python pipeline/generate.py mon_logo.png --format magnet \
+    --magnet-n 4 --mag-thick 2 --mag-gap 55
 
 # Format tampon (miroir + cavité) → écrit aussi handle.stl à côté du logo
 ./.venv/bin/python pipeline/generate.py mon_logo.png --format stamp

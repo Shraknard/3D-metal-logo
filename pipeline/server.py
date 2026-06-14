@@ -114,6 +114,8 @@ def do_generate():
             mirror=bool(p.get("mirror", False)),
             fmt=str(p.get("fmt", "standard")),
             magnet_n=int(p.get("magnet_n", 2)),
+            mag_h_mm=float(p.get("mag_h_mm", 2.0)),
+            mag_gap_mm=float(p.get("mag_gap_mm", 60.0)),
         )
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()
